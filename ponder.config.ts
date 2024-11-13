@@ -14,7 +14,7 @@ import {
   Providers,
 } from './src/utils'
 
-const toTransport = (chainId: number) => {
+const gatherTransportList = (chainId: ChainId) => {
   let index = 0
   const list = []
   if (process.env[`PONDER_RPC_URL_${chainId}`]) {
@@ -24,6 +24,11 @@ const toTransport = (chainId: number) => {
     list.push(process.env[`PONDER_RPC_URL_${chainId}_${index}`]!)
     index++
   }
+  return list
+}
+
+const toTransport = (chainId: ChainId) => {
+  const list = gatherTransportList(chainId)
   return loadBalance(
     list.map((url) =>
       url.startsWith('http')
@@ -38,6 +43,28 @@ const toTransport = (chainId: number) => {
     ),
   )
 }
+
+// await Promise.all(
+//   Object.values(chains).map(async (chainId) => {
+// const chain = chains[chainId]
+// const list = gatherTransportList(chainId)
+// for (const url of list) {
+// const client = createPublicClient({
+//   transport: url.startsWith('http') ? http(url) : webSocket(url),
+// })
+// const info = await client
+//   .request({
+//     method: 'web3_clientVersion',
+//     params: [],
+//   } as any)
+//   .catch(() => null)
+// console.log(url, info)
+// }
+// client.info
+// const info = await client.getInfo()
+// console.log(chainId, info.name)
+//   }),
+// )
 
 const getValidatorAddress = (
   provider: Provider,
