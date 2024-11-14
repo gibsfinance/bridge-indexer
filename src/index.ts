@@ -1,6 +1,5 @@
 import { Context, ponder } from '@/generated'
 import * as PonderCore from '@ponder/core'
-// import { Block } from "viem";
 import {
   AffirmationComplete,
   Block,
@@ -14,14 +13,10 @@ import {
   UserRequestForSignature,
   ValidatorStatus,
 } from '../ponder.schema'
-import { concatHex, type Hex, keccak256, numberToHex } from 'viem'
+import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
-import { eq, sql } from '@ponder/core'
-import {
-  bridgeValidatorCache,
-  getBridgeAddressFromValidator,
-  ids,
-} from './utils'
+import { eq } from '@ponder/core'
+import { getBridgeAddressFromValidator, ids, bridgeInfo } from './utils'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
   return await context.db
@@ -64,22 +59,16 @@ const getRequiredSignatures = async (context: Context, bridgeAddress: Hex) => {
   })
 }
 
-// const infoFromAddress = (chainId: number, address: Hex) => {
-//   return {
-//     provider: 'pulsechain',
-//     side: 'home',
-//   }
-// }
-
 const upsertBridge = async (context: Context, address: Hex) => {
+  const info = bridgeInfo(address)
   return await context.db
     .insert(Bridge)
     .values({
       bridgeId: ids.bridge(context, address),
       chainId: context.network.chainId.toString(),
-      address,
-      provider: 'pulsechain',
-      side: 'home',
+      address: info!.address,
+      provider: info!.provider,
+      side: info!.side,
     })
     .onConflictDoNothing()
 }
@@ -230,11 +219,20 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
     validatorId,
     logIndex: event.log.logIndex,
   })
-  await context.db
-    .update(UserRequestForAffirmation, {
-      messageHash,
+  // await context.db.update(UserRequestForAffirmation, (row) => ({
+  //   encounteredSignatures: row.encounteredSignatures + 1,
+  // }))
+  // await context.db.update(UserRequestForAffirmation, {
+  //   messageHashIndex: messageHash,
+  // }).set({
+  //   encounteredSignatures: PonderCore.sql`${UserRequestForAffirmation.encounteredSignatures} + 1`,
+  // })
+  await context.db.sql
+    .update(UserRequestForAffirmation)
+    .set({
+      encounteredSignatures: PonderCore.sql`${UserRequestForAffirmation.encounteredSignatures} + 1`,
     })
-    .set((row) => ({ encounteredSignatures: row.encounteredSignatures + 1 }))
+    .where(eq(UserRequestForAffirmation.messageHash, messageHash))
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
@@ -251,21 +249,23 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
     validatorId,
     logIndex: event.log.logIndex,
   })
-  await context.db
-    .update(UserRequestForSignature, {
-      messageHash,
+  await context.db.sql
+    .update(UserRequestForSignature)
+    .set({
+      encounteredSignatures: PonderCore.sql`${UserRequestForSignature.encounteredSignatures} + 1`,
     })
-    .set((row) => ({ encounteredSignatures: row.encounteredSignatures + 1 }))
+    .where(eq(UserRequestForSignature.messageHash, messageHash))
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
-  const userRequestForAffirmation =
-    await context.db.sql.query.UserRequestForAffirmation.findFirst({
-      where: (table, { eq }) => eq(table.messageId, event.args.messageId),
-    })
-  // const messageHash = event.args.messageHash
+  const userRequestForAffirmation = await context.db.find(
+    UserRequestForAffirmation,
+    {
+      messageId: event.args.messageId,
+    },
+  )!
   await context.db.insert(AffirmationComplete).values({
     transactionId: transaction.transactionId,
     messageHash: userRequestForAffirmation!.messageHash,
@@ -277,10 +277,12 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
 ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
-  const userRequestForSignature =
-    await context.db.sql.query.UserRequestForSignature.findFirst({
-      where: (table, { eq }) => eq(table.messageId, event.args.messageId),
-    })
+  const userRequestForSignature = await context.db.find(
+    UserRequestForSignature,
+    {
+      messageId: event.args.messageId,
+    },
+  )
   await context.db.insert(RelayMessage).values({
     transactionId: transaction.transactionId,
     messageHash: userRequestForSignature!.messageHash,

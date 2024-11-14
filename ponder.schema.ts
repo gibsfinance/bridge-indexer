@@ -1,4 +1,5 @@
 import {
+  index,
   onchainEnum,
   onchainTable,
   primaryKey,
@@ -6,24 +7,40 @@ import {
   sql,
 } from '@ponder/core'
 
-export const Block = onchainTable('Block', (t) => ({
-  blockId: t.hex().primaryKey(),
-  chainId: t.numeric().notNull(),
-  hash: t.hex().notNull(),
-  number: t.bigint().notNull(),
-  timestamp: t.bigint().notNull(),
-  baseFeePerGas: t.bigint(),
-}))
+export const Block = onchainTable(
+  'Block',
+  (t) => ({
+    blockId: t.hex().primaryKey(),
+    chainId: t.numeric().notNull(),
+    hash: t.hex().notNull(),
+    number: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    baseFeePerGas: t.bigint(),
+  }),
+  (t) => ({
+    hash: index().on(t.hash),
+    blockId: index().on(t.blockId),
+    number: index().on(t.number),
+  }),
+)
 
-export const Transaction = onchainTable('Transaction', (t) => ({
-  transactionId: t.hex().primaryKey(),
-  blockId: t.hex().notNull(),
-  hash: t.hex().notNull(),
-  index: t.numeric().notNull(),
-  from: t.hex().notNull(),
-  to: t.hex().notNull(),
-  value: t.bigint().notNull(),
-}))
+export const Transaction = onchainTable(
+  'Transaction',
+  (t) => ({
+    transactionId: t.hex().primaryKey(),
+    blockId: t.hex().notNull(),
+    hash: t.hex().notNull(),
+    index: t.numeric().notNull(),
+    from: t.hex().notNull(),
+    to: t.hex().notNull(),
+    value: t.bigint().notNull(),
+  }),
+  (t) => ({
+    hash: index().on(t.hash),
+    blockId: index().on(t.blockId),
+    transactionId: index().on(t.transactionId),
+  }),
+)
 
 export const ValidatorStatus = onchainTable(
   'ValidatorStatus',
@@ -38,6 +55,9 @@ export const ValidatorStatus = onchainTable(
   }),
   (t) => ({
     pk: primaryKey({ columns: [t.validatorId, t.orderId] }),
+    validatorId: index().on(t.validatorId),
+    bridgeId: index().on(t.bridgeId),
+    transactionId: index().on(t.transactionId),
   }),
 )
 
@@ -45,13 +65,20 @@ export const Direction = onchainEnum('Direction', ['home', 'foreign'])
 
 export const Provider = onchainEnum('Provider', ['pulsechain', 'tokensex'])
 
-export const Bridge = onchainTable('Bridge', (t) => ({
-  bridgeId: t.hex().primaryKey(),
-  chainId: t.numeric().notNull(),
-  address: t.hex().notNull(),
-  provider: Provider().notNull(),
-  side: Direction().notNull(),
-}))
+export const Bridge = onchainTable(
+  'Bridge',
+  (t) => ({
+    bridgeId: t.hex().primaryKey(),
+    chainId: t.numeric().notNull(),
+    address: t.hex().notNull(),
+    provider: Provider().notNull(),
+    side: Direction().notNull(),
+  }),
+  (t) => ({
+    bridgeId: index().on(t.bridgeId),
+    chainId: index().on(t.chainId),
+  }),
+)
 
 export const RequiredSignatureChange = onchainTable(
   'RequiredSignatureChange',
@@ -63,6 +90,12 @@ export const RequiredSignatureChange = onchainTable(
     transactionId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
+  (t) => ({
+    id: index().on(t.id),
+    bridgeId: index().on(t.bridgeId),
+    orderId: index().on(t.orderId),
+    transactionId: index().on(t.transactionId),
+  }),
 )
 
 // user initated going from foreign chain to home chain
@@ -72,15 +105,19 @@ export const UserRequestForAffirmation = onchainTable(
     blockId: t.hex().notNull(),
     transactionId: t.hex().notNull(),
     // should be unique to each bridge across all chains
-    messageHash: t.hex().notNull().primaryKey(),
+    messageId: t.hex().primaryKey().notNull(),
+    messageHash: t.hex().notNull(),
     from: t.hex().notNull(),
     to: t.hex().notNull(),
     amount: t.bigint().notNull(),
-    messageId: t.hex().notNull(),
     encodedData: t.hex().notNull(),
     encounteredSignatures: t.smallint().notNull(),
     requiredSignatures: t.smallint().notNull(),
     logIndex: t.smallint().notNull(),
+  }),
+  (t) => ({
+    messageIdIndex: index().on(t.messageId),
+    messageHashIndex: index().on(t.messageHash),
   }),
 )
 // user initated going from home chain to foreign chain
@@ -91,15 +128,19 @@ export const UserRequestForSignature = onchainTable(
     blockId: t.hex().notNull(),
     transactionId: t.hex().notNull(),
     // should be unique to each bridge across all chains
-    messageHash: t.hex().notNull().primaryKey(),
+    messageHash: t.hex().notNull(),
     from: t.hex().notNull(),
     to: t.hex().notNull(),
     amount: t.bigint().notNull(),
-    messageId: t.hex().notNull(),
+    messageId: t.hex().primaryKey(),
     encodedData: t.hex().notNull(),
     encounteredSignatures: t.smallint().notNull(),
     requiredSignatures: t.smallint().notNull(),
     logIndex: t.smallint().notNull(),
+  }),
+  (t) => ({
+    messageIdIndex: index().on(t.messageId),
+    messageHashIndex: index().on(t.messageHash),
   }),
 )
 
@@ -116,6 +157,9 @@ export const SignedForAffirmation = onchainTable(
     validatorId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
+  (t) => ({
+    messageHashIndex: index().on(t.messageHash),
+  }),
 )
 
 // validator initiated going from home to foreign chain
@@ -131,23 +175,38 @@ export const SignedForUserRequest = onchainTable(
     validatorId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
+  (t) => ({
+    messageHashIndex: index().on(t.messageHash),
+  }),
 )
 
-export const RelayMessage = onchainTable('RelayMessage', (t) => ({
-  messageHash: t.hex().primaryKey(),
-  transactionId: t.hex().notNull(),
-  // the address that delivered the tokens
-  deliverer: t.hex().notNull(),
-  logIndex: t.smallint().notNull(),
-}))
+export const RelayMessage = onchainTable(
+  'RelayMessage',
+  (t) => ({
+    messageHash: t.hex().primaryKey(),
+    transactionId: t.hex().notNull(),
+    // the address that delivered the tokens
+    deliverer: t.hex().notNull(),
+    logIndex: t.smallint().notNull(),
+  }),
+  (t) => ({
+    messageHashIndex: index().on(t.messageHash),
+  }),
+)
 
-export const AffirmationComplete = onchainTable('AffirmationComplete', (t) => ({
-  messageHash: t.hex().primaryKey(),
-  transactionId: t.hex().notNull(),
-  // the address that delivered the tokens - in this case, the final signer
-  deliverer: t.hex().notNull(),
-  logIndex: t.smallint().notNull(),
-}))
+export const AffirmationComplete = onchainTable(
+  'AffirmationComplete',
+  (t) => ({
+    messageHash: t.hex().primaryKey(),
+    transactionId: t.hex().notNull(),
+    // the address that delivered the tokens - in this case, the final signer
+    deliverer: t.hex().notNull(),
+    logIndex: t.smallint().notNull(),
+  }),
+  (t) => ({
+    messageHashIndex: index().on(t.messageHash),
+  }),
+)
 
 export const RequiredSignatureChangeRelations = relations(
   RequiredSignatureChange,

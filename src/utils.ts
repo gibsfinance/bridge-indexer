@@ -196,3 +196,9 @@ export const getBridgeAddressFromValidator = _.memoize(
     throw new Error('No key found')
   },
 )
+
+export const bridgeInfo = _.memoize((bridgeAddress: Hex) => {
+  return [...minimalInfo.values()].find((info) => {
+    return info.address === getAddress(bridgeAddress)
+  })
+})
