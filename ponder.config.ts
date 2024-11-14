@@ -1,4 +1,4 @@
-import { createConfig, loadBalance } from '@ponder/core'
+import { createConfig, loadBalance, rateLimit } from '@ponder/core'
 import { createPublicClient, getContract, http, webSocket } from 'viem'
 import HomeAMBAbi from './abis/HomeAMB'
 import ForeignAMBAbi from './abis/ForeignAMB'
@@ -29,18 +29,27 @@ const gatherTransportList = (chainId: ChainId) => {
 
 const toTransport = (chainId: ChainId) => {
   const list = gatherTransportList(chainId)
+  const backup = (a: any) => a
+  const rateLimitSettings = {
+    browser: false,
+    requestsPerSecond: 100,
+  }
   return loadBalance(
-    list.map((url) =>
-      url.startsWith('http')
-        ? http(url)
-        : webSocket(url, {
-            reconnect: true,
-            keepAlive: true,
-            timeout: 4_000,
-            retryCount: 10,
-            retryDelay: 100,
-          }),
-    ),
+    list.map((url) => {
+      const wrapper = url.includes('publicnode') ? rateLimit : backup
+      return wrapper(
+        url.startsWith('http')
+          ? http(url)
+          : webSocket(url, {
+              reconnect: true,
+              keepAlive: true,
+              timeout: 4_000,
+              retryCount: 10,
+              retryDelay: 100,
+            }),
+        rateLimitSettings,
+      )
+    }),
   )
 }
 
@@ -84,26 +93,31 @@ export default createConfig({
       chainId: chains.ethereum,
       transport: toTransport(chains.ethereum),
       pollingInterval: 6_000,
+      maxRequestsPerSecond: 1_000,
     },
     bsc: {
       chainId: chains.bsc,
       transport: toTransport(chains.bsc),
       pollingInterval: 3_000,
+      maxRequestsPerSecond: 1_000,
     },
     pulsechain: {
       chainId: chains.pulsechain,
       transport: toTransport(chains.pulsechain),
       pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
     pulsechainV4: {
       chainId: chains.pulsechainV4,
       transport: toTransport(chains.pulsechainV4),
       pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
     sepolia: {
       chainId: chains.sepolia,
       transport: toTransport(chains.sepolia),
       pollingInterval: 6_000,
+      maxRequestsPerSecond: 1_000,
     },
   },
   contracts: {

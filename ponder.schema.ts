@@ -209,6 +209,10 @@ export const SignedForUserRequestRelations = relations(
       fields: [SignedForUserRequest.messageHash],
       references: [UserRequestForSignature.messageHash],
     }),
+    delivery: t.one(RelayMessage, {
+      fields: [SignedForUserRequest.messageHash],
+      references: [RelayMessage.messageHash],
+    }),
   }),
 )
 
@@ -222,6 +226,10 @@ export const SignedForAffirmationRelations = relations(
     userRequest: t.one(UserRequestForAffirmation, {
       fields: [SignedForAffirmation.messageHash],
       references: [UserRequestForAffirmation.messageHash],
+    }),
+    delivery: t.one(AffirmationComplete, {
+      fields: [SignedForAffirmation.messageHash],
+      references: [AffirmationComplete.messageHash],
     }),
   }),
 )
