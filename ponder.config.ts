@@ -36,7 +36,10 @@ const toTransport = (chainId: ChainId) => {
   }
   return loadBalance(
     list.map((url) => {
-      const wrapper = url.includes('publicnode') ? rateLimit : backup
+      const wrapper =
+        url.includes('publicnode') || url.includes('pulsechain')
+          ? rateLimit
+          : backup
       return wrapper(
         url.startsWith('http')
           ? http(url)
