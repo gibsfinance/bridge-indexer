@@ -199,6 +199,6 @@ export const getBridgeAddressFromValidator = _.memoize(
 
 export const bridgeInfo = _.memoize((bridgeAddress: Hex) => {
   return [...minimalInfo.values()].find((info) => {
-    return info.address === getAddress(bridgeAddress)
+    return getAddress(info.address) === getAddress(bridgeAddress)
   })
 })
