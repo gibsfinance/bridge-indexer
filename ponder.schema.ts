@@ -111,8 +111,6 @@ export const UserRequestForAffirmation = onchainTable(
     to: t.hex().notNull(),
     amount: t.bigint().notNull(),
     encodedData: t.hex().notNull(),
-    encounteredSignatures: t.smallint().notNull(),
-    requiredSignatures: t.smallint().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({
@@ -134,8 +132,6 @@ export const UserRequestForSignature = onchainTable(
     amount: t.bigint().notNull(),
     messageId: t.hex().primaryKey(),
     encodedData: t.hex().notNull(),
-    encounteredSignatures: t.smallint().notNull(),
-    requiredSignatures: t.smallint().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({

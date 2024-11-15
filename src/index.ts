@@ -17,6 +17,7 @@ import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
 import { eq } from '@ponder/core'
 import { getBridgeAddressFromValidator, ids, bridgeInfo } from './utils'
+import _ from 'lodash'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
   return await context.db
@@ -48,15 +49,6 @@ const upsertTransaction = async (
       value: transaction.value,
     })
     .onConflictDoNothing()
-}
-
-const getRequiredSignatures = async (context: Context, bridgeAddress: Hex) => {
-  const bridgeId = ids.bridge(context, bridgeAddress)
-  // console.log('sig check', bridgeAddress, bridgeId)
-  return await context.db.sql.query.RequiredSignatureChange.findFirst({
-    where: (table, { eq }) => eq(table.bridgeId, bridgeId),
-    orderBy: (table, { desc }) => desc(table.orderId),
-  })
 }
 
 const upsertBridge = async (context: Context, address: Hex) => {
@@ -158,10 +150,6 @@ ponder.on(
   async ({ event, context }) => {
     const block = await upsertBlock(context, event.block)
     const transaction = await upsertTransaction(context, event.transaction)
-    const latestRequiredSignatures = await getRequiredSignatures(
-      context,
-      event.log.address,
-    )
     const parsed = parseAMBMessage(event.args.encodedData)
     await context.db
       .insert(UserRequestForAffirmation)
@@ -175,7 +163,6 @@ ponder.on(
         messageId: event.args.messageId,
         encodedData: event.args.encodedData,
         encounteredSignatures: 0,
-        requiredSignatures: latestRequiredSignatures!.requiredSignatures,
         logIndex: event.log.logIndex,
       })
       .onConflictDoNothing()
@@ -185,22 +172,16 @@ ponder.on(
 ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
-  const latestRequiredSignatures = await getRequiredSignatures(
-    context,
-    event.log.address,
-  )
   const parsed = parseAMBMessage(event.args.encodedData)
   await context.db.insert(UserRequestForSignature).values({
     blockId: block.blockId,
     transactionId: transaction.transactionId,
-    requiredSignatures: latestRequiredSignatures!.requiredSignatures,
     amount: parsed.nestedData.amount,
     messageId: event.args.messageId,
     from: parsed.sender,
     encodedData: event.args.encodedData,
     messageHash: parsed.messageHash,
     to: parsed.to,
-    encounteredSignatures: 0,
     logIndex: event.log.logIndex,
   })
 })
@@ -219,20 +200,6 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
     validatorId,
     logIndex: event.log.logIndex,
   })
-  // await context.db.update(UserRequestForAffirmation, (row) => ({
-  //   encounteredSignatures: row.encounteredSignatures + 1,
-  // }))
-  // await context.db.update(UserRequestForAffirmation, {
-  //   messageHashIndex: messageHash,
-  // }).set({
-  //   encounteredSignatures: PonderCore.sql`${UserRequestForAffirmation.encounteredSignatures} + 1`,
-  // })
-  await context.db.sql
-    .update(UserRequestForAffirmation)
-    .set({
-      encounteredSignatures: PonderCore.sql`${UserRequestForAffirmation.encounteredSignatures} + 1`,
-    })
-    .where(eq(UserRequestForAffirmation.messageHash, messageHash))
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
@@ -249,12 +216,6 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
     validatorId,
     logIndex: event.log.logIndex,
   })
-  await context.db.sql
-    .update(UserRequestForSignature)
-    .set({
-      encounteredSignatures: PonderCore.sql`${UserRequestForSignature.encounteredSignatures} + 1`,
-    })
-    .where(eq(UserRequestForSignature.messageHash, messageHash))
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {

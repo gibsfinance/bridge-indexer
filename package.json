@@ -11,7 +11,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@ponder/core": "^0.7.0",
+    "@ponder/core": "^0.7.1",
     "@types/lodash": "^4.17.13",
     "hono": "^4.5.0",
     "lodash": "^4.17.21",

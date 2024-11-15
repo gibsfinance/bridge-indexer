@@ -14,6 +14,8 @@ import {
   Providers,
 } from './src/utils'
 
+Error.stackTraceLimit = Infinity
+
 const gatherTransportList = (chainId: ChainId) => {
   let index = 0
   const list = []
@@ -56,28 +58,6 @@ const toTransport = (chainId: ChainId) => {
   )
 }
 
-// await Promise.all(
-//   Object.values(chains).map(async (chainId) => {
-// const chain = chains[chainId]
-// const list = gatherTransportList(chainId)
-// for (const url of list) {
-// const client = createPublicClient({
-//   transport: url.startsWith('http') ? http(url) : webSocket(url),
-// })
-// const info = await client
-//   .request({
-//     method: 'web3_clientVersion',
-//     params: [],
-//   } as any)
-//   .catch(() => null)
-// console.log(url, info)
-// }
-// client.info
-// const info = await client.getInfo()
-// console.log(chainId, info.name)
-//   }),
-// )
-
 const getValidatorAddress = (
   provider: Provider,
   from: ChainId,
@@ -94,9 +74,9 @@ export default createConfig({
   database: {
     kind: 'postgres',
     connectionString: process.env.DATABASE_URL,
-    // poolConfig: {
-    //   max: 10,
-    // },
+    poolConfig: {
+      max: 100,
+    },
   },
   networks: {
     ethereum: {
@@ -132,7 +112,6 @@ export default createConfig({
   },
   contracts: {
     TokenOmnibridge: {
-      // includeTransactionReceipts: true,
       abi: TokenOmnibridgeAbi,
       network: {
         ethereum: {
@@ -163,7 +142,6 @@ export default createConfig({
       },
     },
     ValidatorContract: {
-      // includeTransactionReceipts: true,
       abi: BaseBridgeValidatorsAbi,
       network: {
         pulsechain: {
@@ -230,7 +208,6 @@ export default createConfig({
       },
     },
     HomeAMB: {
-      // includeTransactionReceipts: true,
       abi: HomeAMBAbi,
       filter: {
         event: [
@@ -258,7 +235,6 @@ export default createConfig({
       },
     },
     ForeignAMB: {
-      // includeTransactionReceipts: true,
       filter: {
         event: [
           'UserRequestForAffirmation', // foreign -> home start
