@@ -4,7 +4,6 @@ import {
   onchainTable,
   primaryKey,
   relations,
-  sql,
 } from '@ponder/core'
 
 export const Block = onchainTable(
