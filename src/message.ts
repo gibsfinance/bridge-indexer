@@ -1,14 +1,22 @@
 import {
+  decodeAbiParameters,
   decodeFunctionData,
   getAddress,
   type Hex,
+  isAddress,
   keccak256,
   numberToHex,
   parseAbi,
+  parseAbiParameter,
+  parseAbiParameters,
   zeroAddress,
 } from 'viem'
-import ERC677 from '../abis/ERC677'
-import BasicOmnibridge from '../abis/BasicOmnibridge'
+// import ERC677 from '../abis/ERC677'
+import abi from '../abis/BasicOmnibridge'
+import extraAbi from '../abis/BasicOmnibridgeExtra'
+import { mergeAbis } from '@ponder/core'
+
+const mergedAbi = mergeAbis([abi, extraAbi])
 
 function strip0x(input: string) {
   return input.replace(/^0x/, '')
@@ -48,7 +56,29 @@ export function packSignatures(array: ReturnType<typeof signatureToVRS>[]) {
   return `0x${msgLength}${v}${r}${s}`
 }
 
-export const parseAMBMessage = (msg: Hex) => {
+const abiDelivery = parseAbiParameters(['(address,uint256,uint256,uint256)'])
+
+const parseDelivery = (data: Hex) => {
+  try {
+    const parsed = decodeAbiParameters(abiDelivery, data)
+    return parsed[0]
+  } catch (err) {}
+  // const parsed = parseAbi([
+  //   'function deliver(address,uint256,bytes)',
+  // ])
+}
+
+type FeeDirector = {
+  recipient: Hex
+  settings: bigint
+  limit: bigint
+  multiplier: bigint
+  feeType: 'gas+' | 'fixed' | 'percentage'
+  unwrapped: boolean
+  excludePriority: boolean
+}
+
+export const parseAMBMessage = (txFrom: Hex, msg: Hex) => {
   const message = strip0x(msg)
   const messageId = `0x${message.slice(0, 64)}`
   const sender = `0x${message.slice(64, 104)}`
@@ -77,95 +107,79 @@ export const parseAMBMessage = (msg: Hex) => {
     amount: 0n as bigint,
     calldata: '0x' as Hex,
   }
+  const { args, functionName } = decodeFunctionData({
+    abi: mergedAbi,
+    data: bridgeCalldata,
+  })
   let from = zeroAddress as Hex
   let to = zeroAddress as Hex
-  const handleNativeTokensAndCall = bridgeSigHash === '0x867f7a4d'
-  const handleBridgedTokensAndCall = bridgeSigHash === '0xc5345761'
-  if (handleNativeTokensAndCall || handleBridgedTokensAndCall) {
-    // const method = handleNativeTokensAndCall
-    //   ? 'handleNativeTokensAndCall'
-    //   : 'handleBridgedTokensAndCall'
-    // const bridge = await hre.ethers.getContractAt('IBasicOmnibridge', ethers.ZeroAddress) as unknown as IBasicOmnibridge
-    const {
-      functionName,
-      args: [token, router, amount, calldata],
-    } = decodeFunctionData({
-      abi: BasicOmnibridge,
-      data: bridgeCalldata,
-      // functionName: method,
-    })
-    if (functionName === 'handleNativeTokensAndCall') {
-      nestedData.token = token as Hex
-      nestedData.router = router as Hex
-      to = nestedData.router
-      nestedData.amount = BigInt(amount)
-      nestedData.calldata = calldata as Hex
-    } else if (functionName === 'handleBridgedTokensAndCall') {
-      nestedData.token = token as Hex
-      nestedData.router = router as Hex
-      to = nestedData.router
-      nestedData.amount = BigInt(amount)
-      nestedData.calldata = calldata as Hex
-    }
-  } else if (
-    bridgeSigHash === '0xd522cfd7' /* deployAndHandleBridgedTokensAndCall */
-  ) {
-    const {
-      functionName,
-      args: [token, _name, _symbol, _decimals, router, amount, calldata],
-    } = decodeFunctionData({
-      abi: BasicOmnibridge,
-      data: bridgeCalldata,
-    })
-    if (functionName !== 'deployAndHandleBridgedTokensAndCall') {
-      throw new Error('Invalid function')
-    }
-    nestedData.token = token as Hex
-    nestedData.router = router as Hex
-    to = nestedData.router
-    nestedData.amount = BigInt(amount as bigint)
-    nestedData.calldata = calldata as Hex
-  } else if (bridgeSigHash === '0x2ae87cdd') {
-    // console.log(bridgeCalldata)
-    const {
-      functionName,
-      args: [token, _name, _symbol, _decimals, router, amount],
-    } = decodeFunctionData({
-      abi: parseAbi([
-        'function deployAndHandleBridgedTokens(address,string,string,uint8,address,uint256)',
-      ]),
-      data: bridgeCalldata,
-    })
-    if (functionName !== 'deployAndHandleBridgedTokens') {
-      throw new Error('Invalid function')
-    }
-    nestedData.token = token as Hex
-    nestedData.router = router as Hex
-    to = nestedData.router
-    nestedData.amount = BigInt(amount as bigint)
-    // const parsed = parseAMBMessage(bridgeCalldata)
-    // from = parsed.sender
-    // const {} = parse
-    // throw new Error('Invalid bridgeSigHash')
+  if (functionName === 'handleNativeTokens') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[1] as Hex
+    nestedData.amount = args[2] as bigint
+  } else if (functionName === 'handleBridgedTokens') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[1] as Hex
+    nestedData.amount = args[2] as bigint
+  } else if (functionName === 'handleNativeTokensAndCall') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[1] as Hex
+    nestedData.amount = args[2] as bigint
+    nestedData.calldata = args[3] as Hex
+  } else if (functionName === 'handleBridgedTokensAndCall') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[1] as Hex
+    nestedData.amount = args[2] as bigint
+    nestedData.calldata = args[3] as Hex
+  } else if (functionName === 'relayTokensAndCall') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[1] as Hex
+    nestedData.amount = args[2] as bigint
+    nestedData.calldata = args[3] as Hex
+  } else if (functionName === 'deployAndHandleBridgedTokensAndCall') {
+    nestedData.token = args[0] as Hex
+    nestedData.router = args[4] as Hex
+    nestedData.amount = args[5] as bigint
+    nestedData.calldata = args[6] as Hex
   }
-  // else if (bridgeSigHash === '0x4000aea0' /* transferAndCall */) {
-  //   const {
-  //     functionName,
-  //     args: [sender, amount, bytes],
-  //   } = decodeFunctionData({
-  //     abi: ERC677,
-  //     data: bridgeCalldata,
-  //   })
-  //   if (functionName !== 'transferAndCall') {
-  //     throw new Error('Invalid function')
-  //   }
-  //   nestedData.router = to as Hex
-  //   to = nestedData.router
-  //   nestedData.amount = BigInt(amount as bigint)
-  //   nestedData.calldata = bytes as Hex
-  // }
+  let feeDirector: null | FeeDirector = null
+  if (isAddress(nestedData.calldata)) {
+    to = nestedData.calldata
+  } else {
+    const parsed = parseDelivery(nestedData.calldata)
+    if (parsed) {
+      const [recipient, settings, limit, multiplier] = parsed
+      to = recipient
+      const feeTypeFixed = BigInt.asUintN(1, settings) === 1n
+      const unwrapped = BigInt.asUintN(1, settings >> 1n) === 1n
+      const excludePriority = BigInt.asUintN(1, settings >> 2n) === 1n
+      const feeTypePercentage = BigInt.asUintN(1, settings >> 3n) === 1n
+      let feeType: FeeDirector['feeType'] = 'gas+'
+      if (feeTypeFixed) {
+        feeType = 'fixed'
+      } else if (feeTypePercentage) {
+        feeType = 'percentage'
+      }
+      feeDirector = {
+        recipient,
+        settings,
+        limit,
+        multiplier,
+        feeType,
+        unwrapped,
+        excludePriority,
+      }
+    }
+  }
+  if (from === zeroAddress) {
+    from = txFrom
+  }
+  if (to === zeroAddress) {
+    to = getAddress(nestedData.router)
+  }
 
   return {
+    feeDirector,
     messageHash,
     sender: getAddress(sender),
     executor: getAddress(executor),

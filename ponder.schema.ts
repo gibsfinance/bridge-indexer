@@ -117,6 +117,25 @@ export const UserRequestForAffirmation = onchainTable(
     messageHashIndex: index().on(t.messageHash),
   }),
 )
+export const FeeDirector = onchainTable(
+  'FeeDirector',
+  (t) => ({
+    feeDirectorId: t.hex().primaryKey(),
+    messageId: t.hex(),
+    recipient: t.hex().notNull(),
+    settings: t.bigint().notNull(),
+    limit: t.bigint().notNull(),
+    multiplier: t.bigint().notNull(),
+    feeType: t.text().notNull(),
+    unwrapped: t.boolean().notNull(),
+    excludePriority: t.boolean().notNull(),
+  }),
+  (t) => ({
+    feeDirectorIdIndex: index().on(t.feeDirectorId),
+    messageIdIndex: index().on(t.messageId),
+  }),
+)
+
 // user initated going from home chain to foreign chain
 export const UserRequestForSignature = onchainTable(
   'UserRequestForSignature',
@@ -132,12 +151,21 @@ export const UserRequestForSignature = onchainTable(
     messageId: t.hex().primaryKey(),
     encodedData: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
+    feeDirectorId: t.hex(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
+    feeDirectorIdIndex: index().on(t.feeDirectorId),
     messageHashIndex: index().on(t.messageHash),
   }),
 )
+
+export const FeeDirectorRelations = relations(FeeDirector, (t) => ({
+  userRequest: t.one(UserRequestForSignature, {
+    fields: [FeeDirector.feeDirectorId],
+    references: [UserRequestForSignature.feeDirectorId],
+  }),
+}))
 
 // validator initiated going from foreign chain to home chain
 export const SignedForAffirmation = onchainTable(
@@ -203,6 +231,13 @@ export const AffirmationComplete = onchainTable(
   }),
 )
 
+export const TransactionRelations = relations(Transaction, (t) => ({
+  block: t.one(Block, {
+    fields: [Transaction.blockId],
+    references: [Block.blockId],
+  }),
+}))
+
 export const RequiredSignatureChangeRelations = relations(
   RequiredSignatureChange,
   (t) => ({
@@ -248,6 +283,10 @@ export const UserRequestForSignatureRelations = relations(
     delivery: t.one(RelayMessage, {
       fields: [UserRequestForSignature.messageHash],
       references: [RelayMessage.messageHash],
+    }),
+    feeDirector: t.one(FeeDirector, {
+      fields: [UserRequestForSignature.messageId],
+      references: [FeeDirector.messageId],
     }),
   }),
 )

@@ -224,13 +224,15 @@ export default createConfig({
             pathways.tokensex[chains.pulsechain]![chains.bsc]!.home,
           ],
           // bsc is deployed at 17_494_240
-          startBlock: 17_268_302,
+          startBlock: 20427991,
+          // startBlock: 17_268_302,
         },
         pulsechainV4: {
           address: [
             pathways.pulsechain[chains.pulsechainV4]![chains.sepolia]!.home,
           ],
-          startBlock: 16_564_237,
+          startBlock: 19836620,
+          // startBlock: 16_564_237,
         },
       },
     },
@@ -247,17 +249,20 @@ export default createConfig({
           address: [
             pathways.pulsechain[chains.pulsechain]![chains.ethereum]!.foreign,
           ],
-          startBlock: 17_264_119,
+          startBlock: 19920476,
+          // startBlock: 17_264_119,
         },
         bsc: {
           address: [pathways.tokensex[chains.pulsechain]![chains.bsc]!.foreign],
-          startBlock: 28_987_322,
+          startBlock: 39182556,
+          // startBlock: 28_987_322,
         },
         sepolia: {
           address: [
             pathways.pulsechain[chains.pulsechainV4]![chains.sepolia]!.foreign,
           ],
-          startBlock: 3_331_901,
+          startBlock: 7019369,
+          // startBlock: 3_331_901,
         },
       },
     },

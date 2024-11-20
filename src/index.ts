@@ -4,6 +4,7 @@ import {
   AffirmationComplete,
   Block,
   Bridge,
+  FeeDirector,
   RelayMessage,
   RequiredSignatureChange,
   SignedForAffirmation,
@@ -145,12 +146,25 @@ ponder.on(
   },
 )
 
+const targetAddress = '0xAF2ce0189f46f5663715b0b9ED2a10eA924AB9B0'
+  .slice(2)
+  .toLowerCase()
+
+const cached = new Set<Hex>()
 ponder.on(
   'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
+    if (!event.args.encodedData.includes(targetAddress)) {
+      return
+    }
     const block = await upsertBlock(context, event.block)
     const transaction = await upsertTransaction(context, event.transaction)
-    const parsed = parseAMBMessage(event.args.encodedData)
+    const parsed = parseAMBMessage(
+      event.transaction.from,
+      event.args.encodedData,
+    )
+    cached.add(parsed.messageHash)
+    cached.add(event.args.messageId)
     await context.db
       .insert(UserRequestForAffirmation)
       .values({
@@ -170,23 +184,51 @@ ponder.on(
 )
 
 ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
+  if (!event.args.encodedData.includes(targetAddress)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
-  const parsed = parseAMBMessage(event.args.encodedData)
+  const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
+  cached.add(parsed.messageHash)
+  cached.add(event.args.messageId)
+  let feeDirectorId = null
+  if (parsed.feeDirector) {
+    feeDirectorId = event.args.messageId
+    await context.db
+      .insert(FeeDirector)
+      .values({
+        feeDirectorId: event.args.messageId,
+        messageId: event.args.messageId,
+        recipient: parsed.feeDirector.recipient,
+        settings: parsed.feeDirector.settings,
+        limit: parsed.feeDirector.limit,
+        multiplier: parsed.feeDirector.multiplier,
+        feeType: parsed.feeDirector.feeType,
+        unwrapped: parsed.feeDirector.unwrapped,
+        excludePriority: parsed.feeDirector.excludePriority,
+      })
+      .onConflictDoNothing()
+  }
   await context.db.insert(UserRequestForSignature).values({
+    feeDirectorId,
     blockId: block.blockId,
     transactionId: transaction.transactionId,
     amount: parsed.nestedData.amount,
     messageId: event.args.messageId,
-    from: parsed.sender,
+    from: parsed.from,
     encodedData: event.args.encodedData,
     messageHash: parsed.messageHash,
     to: parsed.to,
     logIndex: event.log.logIndex,
   })
+  console.log(parsed)
 })
 
 ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
+  if (!cached.has(event.args.messageHash)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -203,6 +245,9 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
+  if (!cached.has(event.args.messageHash)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -219,6 +264,9 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
+  if (!cached.has(event.args.messageId)) {
+    return
+  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForAffirmation = await context.db.find(
@@ -236,6 +284,9 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
 })
 
 ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
+  if (!cached.has(event.args.messageId)) {
+    return
+  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForSignature = await context.db.find(
