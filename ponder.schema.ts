@@ -111,17 +111,19 @@ export const UserRequestForAffirmation = onchainTable(
     amount: t.bigint().notNull(),
     encodedData: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
+    bridgeId: t.hex().notNull(),
+    requiredSignatures: t.smallint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
     messageHashIndex: index().on(t.messageHash),
+    bridgeIdIndex: index().on(t.bridgeId),
   }),
 )
 export const FeeDirector = onchainTable(
   'FeeDirector',
   (t) => ({
-    feeDirectorId: t.hex().primaryKey(),
-    messageId: t.hex(),
+    messageId: t.hex().primaryKey(),
     recipient: t.hex().notNull(),
     settings: t.bigint().notNull(),
     limit: t.bigint().notNull(),
@@ -131,7 +133,6 @@ export const FeeDirector = onchainTable(
     excludePriority: t.boolean().notNull(),
   }),
   (t) => ({
-    feeDirectorIdIndex: index().on(t.feeDirectorId),
     messageIdIndex: index().on(t.messageId),
   }),
 )
@@ -151,19 +152,20 @@ export const UserRequestForSignature = onchainTable(
     messageId: t.hex().primaryKey(),
     encodedData: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
-    feeDirectorId: t.hex(),
+    bridgeId: t.hex().notNull(),
+    requiredSignatures: t.smallint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
-    feeDirectorIdIndex: index().on(t.feeDirectorId),
     messageHashIndex: index().on(t.messageHash),
+    bridgeIdIndex: index().on(t.bridgeId),
   }),
 )
 
 export const FeeDirectorRelations = relations(FeeDirector, (t) => ({
   userRequest: t.one(UserRequestForSignature, {
-    fields: [FeeDirector.feeDirectorId],
-    references: [UserRequestForSignature.feeDirectorId],
+    fields: [FeeDirector.messageId],
+    references: [UserRequestForSignature.messageId],
   }),
 }))
 
@@ -265,6 +267,10 @@ export const UserRequestForAffirmationRelations = relations(
       fields: [UserRequestForAffirmation.messageHash],
       references: [AffirmationComplete.messageHash],
     }),
+    bridge: t.one(Bridge, {
+      fields: [UserRequestForAffirmation.bridgeId],
+      references: [Bridge.bridgeId],
+    }),
   }),
 )
 
@@ -287,6 +293,10 @@ export const UserRequestForSignatureRelations = relations(
     feeDirector: t.one(FeeDirector, {
       fields: [UserRequestForSignature.messageId],
       references: [FeeDirector.messageId],
+    }),
+    bridge: t.one(Bridge, {
+      fields: [UserRequestForSignature.bridgeId],
+      references: [Bridge.bridgeId],
     }),
   }),
 )

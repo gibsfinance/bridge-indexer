@@ -119,6 +119,8 @@ ponder.on('ValidatorContract:ValidatorRemoved', async ({ event, context }) => {
     }))
 })
 
+const requiredSignatureChange = new Map<Hex, number>()
+
 ponder.on(
   'ValidatorContract:RequiredSignaturesChanged',
   async ({ event, context }) => {
@@ -132,6 +134,7 @@ ponder.on(
         RequiredSignatureChange,
         eq(RequiredSignatureChange.bridgeId, bridgeId),
       )) || 0
+    requiredSignatureChange.set(bridgeId, Number(event.args.requiredSignatures))
     await context.db
       .insert(RequiredSignatureChange)
       .values({
@@ -157,8 +160,11 @@ ponder.on(
     if (!event.args.encodedData.includes(targetAddress)) {
       return
     }
+    // const info = bridgeInfo(event.log.address)
+    // const bridgeId = ids.bridge(context, info!.address)
     const block = await upsertBlock(context, event.block)
     const transaction = await upsertTransaction(context, event.transaction)
+    const bridge = await upsertBridge(context, event.log.address)
     const parsed = parseAMBMessage(
       event.transaction.from,
       event.args.encodedData,
@@ -168,6 +174,8 @@ ponder.on(
     await context.db
       .insert(UserRequestForAffirmation)
       .values({
+        requiredSignatures: requiredSignatureChange.get(bridge.bridgeId)!,
+        bridgeId: bridge.bridgeId,
         blockId: block.blockId,
         transactionId: transaction.transactionId,
         messageHash: parsed.messageHash,
@@ -187,18 +195,19 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
   if (!event.args.encodedData.includes(targetAddress)) {
     return
   }
+  // const info = bridgeInfo(event.log.address)
+  // const bridgeId = ids.bridge(context, info!.address)
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
+  const bridge = await upsertBridge(context, event.log.address)
+  console.log(bridge)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
   cached.add(parsed.messageHash)
   cached.add(event.args.messageId)
-  let feeDirectorId = null
   if (parsed.feeDirector) {
-    feeDirectorId = event.args.messageId
     await context.db
       .insert(FeeDirector)
       .values({
-        feeDirectorId: event.args.messageId,
         messageId: event.args.messageId,
         recipient: parsed.feeDirector.recipient,
         settings: parsed.feeDirector.settings,
@@ -211,7 +220,8 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
       .onConflictDoNothing()
   }
   await context.db.insert(UserRequestForSignature).values({
-    feeDirectorId,
+    requiredSignatures: requiredSignatureChange.get(bridge.bridgeId)!,
+    bridgeId: bridge.bridgeId,
     blockId: block.blockId,
     transactionId: transaction.transactionId,
     amount: parsed.nestedData.amount,
