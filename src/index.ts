@@ -174,7 +174,7 @@ ponder.on(
     await context.db
       .insert(UserRequestForAffirmation)
       .values({
-        requiredSignatures: requiredSignatureChange.get(bridge.bridgeId)!,
+        requiredSignatures: requiredSignatureChange.get(bridge.bridgeId) || 0,
         bridgeId: bridge.bridgeId,
         blockId: block.blockId,
         transactionId: transaction.transactionId,
@@ -220,7 +220,7 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
       .onConflictDoNothing()
   }
   await context.db.insert(UserRequestForSignature).values({
-    requiredSignatures: requiredSignatureChange.get(bridge.bridgeId)!,
+    requiredSignatures: requiredSignatureChange.get(bridge.bridgeId) || 0,
     bridgeId: bridge.bridgeId,
     blockId: block.blockId,
     transactionId: transaction.transactionId,
