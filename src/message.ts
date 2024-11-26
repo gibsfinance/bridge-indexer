@@ -136,12 +136,25 @@ export const parseAMBMessage = (txFrom: Hex, msg: Hex) => {
     nestedData.router = args[1] as Hex
     nestedData.amount = args[2] as bigint
     nestedData.calldata = args[3] as Hex
+  } else if (functionName === 'deployAndHandleBridgedTokens') {
+    nestedData.token = args[0] as Hex
+    // nestedData.name = args[1] as string
+    // nestedData.symbol = args[2] as string
+    // nestedData.decimals = args[3] as number
+    nestedData.router = args[4] as Hex
+    nestedData.amount = args[5] as bigint
   } else if (functionName === 'deployAndHandleBridgedTokensAndCall') {
     nestedData.token = args[0] as Hex
     nestedData.router = args[4] as Hex
     nestedData.amount = args[5] as bigint
     nestedData.calldata = args[6] as Hex
   }
+  // if (nestedData.token === zeroAddress) {
+  //   const { args, functionName } = decodeFunctionData({
+  //     abi: extraAbi,
+  //     data: bridgeCalldata,
+  //   })
+  // }
   let feeDirector: null | FeeDirector = null
   if (isAddress(nestedData.calldata)) {
     to = nestedData.calldata

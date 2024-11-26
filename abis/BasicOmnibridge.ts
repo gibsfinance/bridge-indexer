@@ -1,4 +1,9 @@
+import { parseAbi } from 'viem'
+
 export default [
+  ...parseAbi([
+    'function deployAndHandleBridgedTokens(address,string,string,uint8,address,uint256)',
+  ]),
   {
     inputs: [
       {

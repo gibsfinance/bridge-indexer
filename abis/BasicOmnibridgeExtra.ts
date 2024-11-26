@@ -1,3 +1,5 @@
+import { parseAbi } from 'viem'
+
 export default [
   {
     inputs: [
