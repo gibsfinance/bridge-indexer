@@ -6,17 +6,14 @@ import {
   isAddress,
   keccak256,
   numberToHex,
-  parseAbi,
-  parseAbiParameter,
   parseAbiParameters,
   zeroAddress,
 } from 'viem'
-// import ERC677 from '../abis/ERC677'
-import abi from '../abis/BasicOmnibridge'
-import extraAbi from '../abis/BasicOmnibridgeExtra'
+import basicOmnibridgeAbi from '../abis/BasicOmnibridge'
+import basicOmnibridgeExtraAbi from '../abis/BasicOmnibridgeExtra'
 import { mergeAbis } from '@ponder/core'
 
-const mergedAbi = mergeAbis([abi, extraAbi])
+const mergedAbi = mergeAbis([basicOmnibridgeAbi, basicOmnibridgeExtraAbi])
 
 function strip0x(input: string) {
   return input.replace(/^0x/, '')
@@ -63,9 +60,6 @@ const parseDelivery = (data: Hex) => {
     const parsed = decodeAbiParameters(abiDelivery, data)
     return parsed[0]
   } catch (err) {}
-  // const parsed = parseAbi([
-  //   'function deliver(address,uint256,bytes)',
-  // ])
 }
 
 type FeeDirector = {
@@ -138,9 +132,6 @@ export const parseAMBMessage = (txFrom: Hex, msg: Hex) => {
     nestedData.calldata = args[3] as Hex
   } else if (functionName === 'deployAndHandleBridgedTokens') {
     nestedData.token = args[0] as Hex
-    // nestedData.name = args[1] as string
-    // nestedData.symbol = args[2] as string
-    // nestedData.decimals = args[3] as number
     nestedData.router = args[4] as Hex
     nestedData.amount = args[5] as bigint
   } else if (functionName === 'deployAndHandleBridgedTokensAndCall') {
@@ -149,12 +140,6 @@ export const parseAMBMessage = (txFrom: Hex, msg: Hex) => {
     nestedData.amount = args[5] as bigint
     nestedData.calldata = args[6] as Hex
   }
-  // if (nestedData.token === zeroAddress) {
-  //   const { args, functionName } = decodeFunctionData({
-  //     abi: extraAbi,
-  //     data: bridgeCalldata,
-  //   })
-  // }
   let feeDirector: null | FeeDirector = null
   if (isAddress(nestedData.calldata)) {
     to = nestedData.calldata

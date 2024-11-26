@@ -77,6 +77,14 @@ const upsertBridge = async (context: Context, address: Hex) => {
     }))
 }
 
+const target = '0xAF2ce0189f46f5663715b0b9ED2a10eA924AB9B0'
+  .toLowerCase()
+  .slice(2)
+
+const whitelist = new Set<Hex>()
+
+const requiredSignatureChange = new Map<Hex, number>()
+
 ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
   const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
   const bridge = await upsertBridge(context, bridgeAddress)
@@ -130,8 +138,6 @@ ponder.on('ValidatorContract:ValidatorRemoved', async ({ event, context }) => {
     }))
 })
 
-const requiredSignatureChange = new Map<Hex, number>()
-
 ponder.on(
   'ValidatorContract:RequiredSignaturesChanged',
   async ({ event, context }) => {
@@ -163,6 +169,9 @@ ponder.on(
 ponder.on(
   'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
+    if (!event.args.encodedData.includes(target)) {
+      return
+    }
     const block = await upsertBlock(context, event.block)
     const transaction = await upsertTransaction(context, event.transaction)
     const bridge = await upsertBridge(context, event.log.address)
@@ -170,6 +179,8 @@ ponder.on(
       event.transaction.from,
       event.args.encodedData,
     )
+    whitelist.add(parsed.messageHash)
+    whitelist.add(event.args.messageId)
     await context.db
       .insert(UserRequestForAffirmation)
       .values({
@@ -194,10 +205,15 @@ ponder.on(
 )
 
 ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
+  if (!event.args.encodedData.includes(target)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const bridge = await upsertBridge(context, event.log.address)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
+  whitelist.add(parsed.messageHash)
+  whitelist.add(event.args.messageId)
   if (parsed.feeDirector) {
     await context.db
       .insert(FeeDirector)
@@ -232,6 +248,9 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
 })
 
 ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
+  if (!whitelist.has(event.args.messageHash)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -249,6 +268,9 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
+  if (!whitelist.has(event.args.messageHash)) {
+    return
+  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -266,6 +288,9 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
+  if (!whitelist.has(event.args.messageId)) {
+    return
+  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForAffirmation = await context.db.find(
@@ -284,6 +309,9 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
 })
 
 ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
+  if (!whitelist.has(event.args.messageId)) {
+    return
+  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForSignature = await context.db.find(
