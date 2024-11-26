@@ -10,6 +10,7 @@ import {
 } from 'viem'
 import HomeAMBAbi from '../abis/HomeAMB'
 import _ from 'lodash'
+import * as PonderCore from '@ponder/core'
 
 export const chains = {
   ethereum: 1,
@@ -202,3 +203,12 @@ export const bridgeInfo = _.memoize((bridgeAddress: Hex) => {
     return getAddress(info.address) === getAddress(bridgeAddress)
   })
 })
+
+export const orderId = (context: Context, event: any) => {
+  return concatHex([
+    numberToHex(event.block.timestamp, { size: 8 }),
+    numberToHex(event.transaction.transactionIndex, { size: 8 }),
+    numberToHex(BigInt(event.log.logIndex), { size: 8 }),
+    numberToHex(context.network.chainId, { size: 8 }),
+  ])
+}

@@ -3,10 +3,10 @@ import * as PonderCore from '@ponder/core'
 import {
   AffirmationComplete,
   Block,
-  Bridge,
+  BridgeSide,
   FeeDirector,
   RelayMessage,
-  RequiredSignatureChange,
+  RequiredSignaturesChange,
   SignedForAffirmation,
   SignedForUserRequest,
   Transaction,
@@ -17,7 +17,12 @@ import {
 import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
 import { eq } from '@ponder/core'
-import { getBridgeAddressFromValidator, ids, bridgeInfo } from './utils'
+import {
+  getBridgeAddressFromValidator,
+  ids,
+  bridgeInfo,
+  orderId,
+} from './utils'
 import _ from 'lodash'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
@@ -31,7 +36,9 @@ const upsertBlock = async (context: Context, block: PonderCore.Block) => {
       timestamp: block.timestamp,
       baseFeePerGas: block.baseFeePerGas,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate((row) => ({
+      hash: row.hash,
+    }))
 }
 
 const upsertTransaction = async (
@@ -49,13 +56,15 @@ const upsertTransaction = async (
       to: transaction.to!,
       value: transaction.value,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate((row) => ({
+      blockId: row.blockId,
+    }))
 }
 
 const upsertBridge = async (context: Context, address: Hex) => {
   const info = bridgeInfo(address)
   return await context.db
-    .insert(Bridge)
+    .insert(BridgeSide)
     .values({
       bridgeId: ids.bridge(context, address),
       chainId: context.network.chainId.toString(),
@@ -63,7 +72,9 @@ const upsertBridge = async (context: Context, address: Hex) => {
       provider: info!.provider,
       side: info!.side,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate((row) => ({
+      address: row.address,
+    }))
 }
 
 ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
@@ -131,12 +142,12 @@ ponder.on(
     const bridgeId = ids.bridge(context, bridgeAddress)
     const count =
       (await context.db.sql.$count(
-        RequiredSignatureChange,
-        eq(RequiredSignatureChange.bridgeId, bridgeId),
+        RequiredSignaturesChange,
+        eq(RequiredSignaturesChange.bridgeId, bridgeId),
       )) || 0
     requiredSignatureChange.set(bridgeId, Number(event.args.requiredSignatures))
     await context.db
-      .insert(RequiredSignatureChange)
+      .insert(RequiredSignaturesChange)
       .values({
         id: ids.requiredSignatureChange(context, bridgeId, BigInt(count)),
         bridgeId,
@@ -149,19 +160,9 @@ ponder.on(
   },
 )
 
-const targetAddress = '0xAF2ce0189f46f5663715b0b9ED2a10eA924AB9B0'
-  .slice(2)
-  .toLowerCase()
-
-const cached = new Set<Hex>()
 ponder.on(
   'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
-    if (!event.args.encodedData.includes(targetAddress)) {
-      return
-    }
-    // const info = bridgeInfo(event.log.address)
-    // const bridgeId = ids.bridge(context, info!.address)
     const block = await upsertBlock(context, event.block)
     const transaction = await upsertTransaction(context, event.transaction)
     const bridge = await upsertBridge(context, event.log.address)
@@ -169,8 +170,6 @@ ponder.on(
       event.transaction.from,
       event.args.encodedData,
     )
-    cached.add(parsed.messageHash)
-    cached.add(event.args.messageId)
     await context.db
       .insert(UserRequestForAffirmation)
       .values({
@@ -186,24 +185,19 @@ ponder.on(
         encodedData: event.args.encodedData,
         encounteredSignatures: 0,
         logIndex: event.log.logIndex,
+        originationChainId: parsed.originationChainId,
+        destinationChainId: parsed.destinationChainId,
+        orderId: orderId(context, event),
       })
       .onConflictDoNothing()
   },
 )
 
 ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
-  if (!event.args.encodedData.includes(targetAddress)) {
-    return
-  }
-  // const info = bridgeInfo(event.log.address)
-  // const bridgeId = ids.bridge(context, info!.address)
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const bridge = await upsertBridge(context, event.log.address)
-  console.log(bridge)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
-  cached.add(parsed.messageHash)
-  cached.add(event.args.messageId)
   if (parsed.feeDirector) {
     await context.db
       .insert(FeeDirector)
@@ -231,14 +225,13 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
     messageHash: parsed.messageHash,
     to: parsed.to,
     logIndex: event.log.logIndex,
+    originationChainId: parsed.originationChainId,
+    destinationChainId: parsed.destinationChainId,
+    orderId: orderId(context, event),
   })
-  console.log(parsed)
 })
 
 ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
-  if (!cached.has(event.args.messageHash)) {
-    return
-  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -251,13 +244,11 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
     messageHash,
     validatorId,
     logIndex: event.log.logIndex,
+    orderId: orderId(context, event),
   })
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
-  if (!cached.has(event.args.messageHash)) {
-    return
-  }
   const block = await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
@@ -270,13 +261,11 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
     messageHash,
     validatorId,
     logIndex: event.log.logIndex,
+    orderId: orderId(context, event),
   })
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
-  if (!cached.has(event.args.messageId)) {
-    return
-  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForAffirmation = await context.db.find(
@@ -290,13 +279,11 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
     messageHash: userRequestForAffirmation!.messageHash,
     deliverer: event.transaction.from,
     logIndex: event.log.logIndex,
+    orderId: orderId(context, event),
   })
 })
 
 ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
-  if (!cached.has(event.args.messageId)) {
-    return
-  }
   await upsertBlock(context, event.block)
   const transaction = await upsertTransaction(context, event.transaction)
   const userRequestForSignature = await context.db.find(
@@ -310,5 +297,6 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
     messageHash: userRequestForSignature!.messageHash,
     deliverer: event.transaction.from,
     logIndex: event.log.logIndex,
+    orderId: orderId(context, event),
   })
 })
