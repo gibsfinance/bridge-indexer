@@ -45,7 +45,7 @@ export const ValidatorStatus = onchainTable(
   'ValidatorStatus',
   (t) => ({
     validatorId: t.hex().notNull(),
-    orderId: t.bigint().notNull(),
+    orderId: t.hex().notNull(),
     transactionId: t.hex().notNull(),
     address: t.hex().notNull(),
     bridgeId: t.hex().notNull(),
@@ -82,15 +82,13 @@ export const BridgeSide = onchainTable(
 export const RequiredSignaturesChange = onchainTable(
   'RequiredSignatureChange',
   (t) => ({
-    id: t.hex().primaryKey(),
+    orderId: t.hex().primaryKey(),
     bridgeId: t.hex().notNull(),
-    orderId: t.bigint().notNull(),
     requiredSignatures: t.smallint().notNull(),
     transactionId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({
-    id: index().on(t.id),
     bridgeId: index().on(t.bridgeId),
     orderId: index().on(t.orderId),
     transactionId: index().on(t.transactionId),
@@ -113,7 +111,6 @@ export const UserRequestForAffirmation = onchainTable(
     encodedData: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
     bridgeId: t.hex().notNull(),
-    requiredSignatures: t.smallint().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
   }),
@@ -157,7 +154,6 @@ export const UserRequestForSignature = onchainTable(
     encodedData: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
     bridgeId: t.hex().notNull(),
-    requiredSignatures: t.smallint().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
   }),

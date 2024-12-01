@@ -142,6 +142,9 @@ export const ids = {
       ]),
     )
   },
+  event: (context: Context, event: any) => {
+    return BigInt(event.log.logIndex)
+  },
   block: (context: Context, hash: Hex) => {
     return keccak256(
       concatHex([numberToHex(context.network.chainId, { size: 32 }), hash]),

@@ -16,7 +16,6 @@ import {
 } from '../ponder.schema'
 import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
-import { eq } from '@ponder/core'
 import {
   getBridgeAddressFromValidator,
   ids,
@@ -83,16 +82,11 @@ ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
   await upsertBlock(context, event.block)
   const tx = await upsertTransaction(context, event.transaction)
   const validatorId = ids.validator(bridge.bridgeId, event.args.validator)
-  const count =
-    (await context.db.sql.$count(
-      ValidatorStatus,
-      eq(ValidatorStatus.validatorId, validatorId),
-    )) || 0
   await context.db
     .insert(ValidatorStatus)
     .values({
       validatorId,
-      orderId: BigInt(count),
+      orderId: orderId(context, event),
       bridgeId: bridge.bridgeId,
       address: event.args.validator,
       active: true,
@@ -105,198 +99,226 @@ ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
 })
 ponder.on('ValidatorContract:ValidatorRemoved', async ({ event, context }) => {
   const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
-  const bridge = await upsertBridge(context, bridgeAddress)
-  await upsertBlock(context, event.block)
-  const tx = await upsertTransaction(context, event.transaction)
-  const validatorId = ids.validator(bridge.bridgeId, event.args.validator)
-  const count =
-    (await context.db.sql.$count(
-      ValidatorStatus,
-      eq(ValidatorStatus.validatorId, validatorId),
-    )) || 0
-  await context.db
-    .insert(ValidatorStatus)
-    .values({
-      validatorId,
-      orderId: BigInt(count),
-      bridgeId: bridge.bridgeId,
-      address: event.args.validator,
-      active: false,
-      transactionId: tx.transactionId,
-      logIndex: event.log.logIndex,
-    })
-    .onConflictDoUpdate(() => ({
-      active: false,
-    }))
+  const bridgeId = ids.bridge(context, bridgeAddress)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  const validatorId = ids.validator(bridgeId, event.args.validator)
+  await Promise.all([
+    upsertBridge(context, bridgeAddress),
+    upsertBlock(context, event.block),
+    upsertTransaction(context, event.transaction),
+    context.db
+      .insert(ValidatorStatus)
+      .values({
+        validatorId,
+        orderId: orderId(context, event),
+        bridgeId,
+        address: event.args.validator,
+        active: false,
+        transactionId,
+        logIndex: event.log.logIndex,
+      })
+      .onConflictDoUpdate(() => ({
+        active: false,
+      })),
+  ])
 })
-
-const requiredSignatureChange = new Map<Hex, number>()
 
 ponder.on(
   'ValidatorContract:RequiredSignaturesChanged',
   async ({ event, context }) => {
     const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
-    await upsertBridge(context, bridgeAddress)
-    await upsertBlock(context, event.block)
-    const tx = await upsertTransaction(context, event.transaction)
     const bridgeId = ids.bridge(context, bridgeAddress)
-    const count =
-      (await context.db.sql.$count(
-        RequiredSignaturesChange,
-        eq(RequiredSignaturesChange.bridgeId, bridgeId),
-      )) || 0
-    requiredSignatureChange.set(bridgeId, Number(event.args.requiredSignatures))
-    await context.db
-      .insert(RequiredSignaturesChange)
-      .values({
-        id: ids.requiredSignatureChange(context, bridgeId, BigInt(count)),
-        bridgeId,
-        orderId: BigInt(count),
-        requiredSignatures: Number(event.args.requiredSignatures),
-        transactionId: tx.transactionId,
-        logIndex: event.log.logIndex,
-      })
-      .onConflictDoNothing()
+    const transactionId = ids.transaction(context, event.transaction.hash)
+    await Promise.all([
+      upsertBridge(context, bridgeAddress),
+      upsertBlock(context, event.block),
+      upsertTransaction(context, event.transaction),
+      context.db
+        .insert(RequiredSignaturesChange)
+        .values({
+          orderId: orderId(context, event),
+          bridgeId,
+          requiredSignatures: Number(event.args.requiredSignatures),
+          transactionId,
+          logIndex: event.log.logIndex,
+        })
+        .onConflictDoNothing(),
+    ])
   },
 )
 
 ponder.on(
   'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
-    const block = await upsertBlock(context, event.block)
-    const transaction = await upsertTransaction(context, event.transaction)
-    const bridge = await upsertBridge(context, event.log.address)
     const parsed = parseAMBMessage(
       event.transaction.from,
       event.args.encodedData,
     )
-    await context.db
-      .insert(UserRequestForAffirmation)
-      .values({
-        requiredSignatures: requiredSignatureChange.get(bridge.bridgeId) || 0,
-        bridgeId: bridge.bridgeId,
-        blockId: block.blockId,
-        transactionId: transaction.transactionId,
-        messageHash: parsed.messageHash,
-        from: parsed.from,
-        to: parsed.to,
-        amount: parsed.nestedData.amount,
-        messageId: event.args.messageId,
-        encodedData: event.args.encodedData,
-        encounteredSignatures: 0,
-        logIndex: event.log.logIndex,
-        originationChainId: parsed.originationChainId,
-        destinationChainId: parsed.destinationChainId,
-        orderId: orderId(context, event),
-      })
-      .onConflictDoNothing()
+    const bridgeId = ids.bridge(context, event.log.address)
+    const blockId = ids.block(context, event.block.hash)
+    const transactionId = ids.transaction(context, event.transaction.hash)
+    await Promise.all([
+      upsertBlock(context, event.block),
+      upsertTransaction(context, event.transaction),
+      upsertBridge(context, event.log.address),
+      context.db
+        .insert(UserRequestForAffirmation)
+        .values({
+          bridgeId,
+          blockId,
+          transactionId,
+          messageHash: parsed.messageHash,
+          from: parsed.from,
+          to: parsed.to,
+          amount: parsed.nestedData.amount,
+          messageId: event.args.messageId,
+          encodedData: event.args.encodedData,
+          logIndex: event.log.logIndex,
+          originationChainId: parsed.originationChainId,
+          destinationChainId: parsed.destinationChainId,
+          orderId: orderId(context, event),
+        })
+        .onConflictDoNothing(),
+    ])
   },
 )
 
 ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
-  const block = await upsertBlock(context, event.block)
-  const transaction = await upsertTransaction(context, event.transaction)
-  const bridge = await upsertBridge(context, event.log.address)
+  const bridgeId = ids.bridge(context, event.log.address)
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
-  if (parsed.feeDirector) {
-    await context.db
-      .insert(FeeDirector)
-      .values({
-        messageId: event.args.messageId,
-        recipient: parsed.feeDirector.recipient,
-        settings: parsed.feeDirector.settings,
-        limit: parsed.feeDirector.limit,
-        multiplier: parsed.feeDirector.multiplier,
-        feeType: parsed.feeDirector.feeType,
-        unwrapped: parsed.feeDirector.unwrapped,
-        excludePriority: parsed.feeDirector.excludePriority,
-      })
-      .onConflictDoNothing()
-  }
-  await context.db.insert(UserRequestForSignature).values({
-    requiredSignatures: requiredSignatureChange.get(bridge.bridgeId) || 0,
-    bridgeId: bridge.bridgeId,
-    blockId: block.blockId,
-    transactionId: transaction.transactionId,
-    amount: parsed.nestedData.amount,
-    messageId: event.args.messageId,
-    from: parsed.from,
-    encodedData: event.args.encodedData,
-    messageHash: parsed.messageHash,
-    to: parsed.to,
-    logIndex: event.log.logIndex,
-    originationChainId: parsed.originationChainId,
-    destinationChainId: parsed.destinationChainId,
-    orderId: orderId(context, event),
-  })
+  await Promise.all([
+    upsertBlock(context, event.block),
+    upsertTransaction(context, event.transaction),
+    upsertBridge(context, event.log.address),
+    parsed.feeDirector
+      ? context.db
+          .insert(FeeDirector)
+          .values({
+            messageId: event.args.messageId,
+            recipient: parsed.feeDirector.recipient,
+            settings: parsed.feeDirector.settings,
+            limit: parsed.feeDirector.limit,
+            multiplier: parsed.feeDirector.multiplier,
+            feeType: parsed.feeDirector.feeType,
+            unwrapped: parsed.feeDirector.unwrapped,
+            excludePriority: parsed.feeDirector.excludePriority,
+          })
+          .onConflictDoNothing()
+      : null,
+    context.db.insert(UserRequestForSignature).values({
+      bridgeId,
+      blockId,
+      transactionId,
+      amount: parsed.nestedData.amount,
+      messageId: event.args.messageId,
+      from: parsed.from,
+      encodedData: event.args.encodedData,
+      messageHash: parsed.messageHash,
+      to: parsed.to,
+      logIndex: event.log.logIndex,
+      originationChainId: parsed.originationChainId,
+      destinationChainId: parsed.destinationChainId,
+      orderId: orderId(context, event),
+    }),
+  ])
 })
 
 ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
-  const block = await upsertBlock(context, event.block)
-  const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
   const bridgeId = ids.bridge(context, event.log.address)
   const validatorId = ids.validator(bridgeId, event.args.signer)
-  await context.db.insert(SignedForAffirmation).values({
-    id: ids.signature(messageHash, validatorId),
-    blockId: block.blockId,
-    transactionId: transaction.transactionId,
-    messageHash,
-    validatorId,
-    logIndex: event.log.logIndex,
-    orderId: orderId(context, event),
-  })
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  await Promise.all([
+    upsertBlock(context, event.block),
+    upsertTransaction(context, event.transaction),
+    upsertBridge(context, event.log.address),
+    context.db
+      .insert(SignedForAffirmation)
+      .values({
+        id: ids.signature(messageHash, validatorId),
+        blockId,
+        transactionId,
+        messageHash,
+        validatorId,
+        logIndex: event.log.logIndex,
+        orderId: orderId(context, event),
+      })
+      .onConflictDoNothing(),
+  ])
 })
 
 ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
-  const block = await upsertBlock(context, event.block)
-  const transaction = await upsertTransaction(context, event.transaction)
   const messageHash = event.args.messageHash
   const bridgeId = ids.bridge(context, event.log.address)
   const validatorId = ids.validator(bridgeId, event.args.signer)
-  await context.db.insert(SignedForUserRequest).values({
-    id: ids.signature(messageHash, validatorId),
-    blockId: block.blockId,
-    transactionId: transaction.transactionId,
-    messageHash,
-    validatorId,
-    logIndex: event.log.logIndex,
-    orderId: orderId(context, event),
-  })
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  await Promise.all([
+    upsertBlock(context, event.block),
+    upsertTransaction(context, event.transaction),
+    upsertBridge(context, event.log.address),
+    context.db
+      .insert(SignedForUserRequest)
+      .values({
+        id: ids.signature(messageHash, validatorId),
+        blockId,
+        transactionId,
+        messageHash,
+        validatorId,
+        logIndex: event.log.logIndex,
+        orderId: orderId(context, event),
+      })
+      .onConflictDoNothing(),
+  ])
 })
 
 ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
-  await upsertBlock(context, event.block)
-  const transaction = await upsertTransaction(context, event.transaction)
+  const transactionId = ids.transaction(context, event.transaction.hash)
   const userRequestForAffirmation = await context.db.find(
     UserRequestForAffirmation,
     {
       messageId: event.args.messageId,
     },
   )!
-  await context.db.insert(AffirmationComplete).values({
-    transactionId: transaction.transactionId,
-    messageHash: userRequestForAffirmation!.messageHash,
-    deliverer: event.transaction.from,
-    logIndex: event.log.logIndex,
-    orderId: orderId(context, event),
-  })
+  await Promise.all([
+    upsertTransaction(context, event.transaction),
+    upsertBlock(context, event.block),
+    context.db
+      .insert(AffirmationComplete)
+      .values({
+        transactionId,
+        messageHash: userRequestForAffirmation!.messageHash,
+        deliverer: event.transaction.from,
+        logIndex: event.log.logIndex,
+        orderId: orderId(context, event),
+      })
+      .onConflictDoNothing(),
+  ])
 })
 
 ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
-  await upsertBlock(context, event.block)
-  const transaction = await upsertTransaction(context, event.transaction)
+  const transactionId = ids.transaction(context, event.transaction.hash)
   const userRequestForSignature = await context.db.find(
     UserRequestForSignature,
     {
       messageId: event.args.messageId,
     },
-  )
-  await context.db.insert(RelayMessage).values({
-    transactionId: transaction.transactionId,
-    messageHash: userRequestForSignature!.messageHash,
-    deliverer: event.transaction.from,
-    logIndex: event.log.logIndex,
-    orderId: orderId(context, event),
-  })
+  )!
+  await Promise.all([
+    upsertBlock(context, event.block),
+    upsertTransaction(context, event.transaction),
+    context.db
+      .insert(RelayMessage)
+      .values({
+        transactionId,
+        messageHash: userRequestForSignature!.messageHash,
+        deliverer: event.transaction.from,
+        logIndex: event.log.logIndex,
+        orderId: orderId(context, event),
+      })
+      .onConflictDoNothing(),
+  ])
 })

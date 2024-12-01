@@ -6,12 +6,10 @@ import {
   isAddress,
   keccak256,
   numberToHex,
-  parseAbi,
-  parseAbiParameter,
   parseAbiParameters,
   zeroAddress,
 } from 'viem'
-// import ERC677 from '../abis/ERC677'
+
 import abi from '../abis/BasicOmnibridge'
 import extraAbi from '../abis/BasicOmnibridgeExtra'
 import { mergeAbis } from '@ponder/core'
@@ -149,12 +147,6 @@ export const parseAMBMessage = (txFrom: Hex, msg: Hex) => {
     nestedData.amount = args[5] as bigint
     nestedData.calldata = args[6] as Hex
   }
-  // if (nestedData.token === zeroAddress) {
-  //   const { args, functionName } = decodeFunctionData({
-  //     abi: extraAbi,
-  //     data: bridgeCalldata,
-  //   })
-  // }
   let feeDirector: null | FeeDirector = null
   if (isAddress(nestedData.calldata)) {
     to = nestedData.calldata
