@@ -282,7 +282,11 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
     {
       messageId: event.args.messageId,
     },
-  )!
+  )
+  if (!userRequestForAffirmation) {
+    // probably a reorg
+    return
+  }
   await Promise.all([
     upsertTransaction(context, event.transaction),
     upsertBlock(context, event.block),
@@ -306,7 +310,11 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
     {
       messageId: event.args.messageId,
     },
-  )!
+  )
+  if (!userRequestForSignature) {
+    // probably a reorg
+    return
+  }
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -314,7 +322,7 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
       .insert(RelayMessage)
       .values({
         transactionId,
-        messageHash: userRequestForSignature!.messageHash,
+        messageHash: userRequestForSignature.messageHash,
         deliverer: event.transaction.from,
         logIndex: event.log.logIndex,
         orderId: orderId(context, event),
