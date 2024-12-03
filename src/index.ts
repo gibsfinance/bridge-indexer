@@ -129,10 +129,7 @@ ponder.on(
     const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
     const bridgeId = ids.bridge(context, bridgeAddress)
     const transactionId = ids.transaction(context, event.transaction.hash)
-    latestSigEventsUnderBridge.set(
-      bridgeId,
-      event.args.requiredSignatures,
-    )
+    latestSigEventsUnderBridge.set(bridgeId, event.args.requiredSignatures)
     await Promise.all([
       upsertBridge(context, bridgeAddress),
       upsertBlock(context, event.block),
@@ -180,6 +177,12 @@ const getLatestRequiredSignatures = async (
     latestSigEvents.push({
       requiredSignatures: 0n,
     })
+    console.log(
+      'No latest signatures event found',
+      context.network.chainId,
+      bridgeId,
+      targetOrderId,
+    )
     // throw new Error('No latest signatures event found')
   }
   const [latest] = latestSigEvents
