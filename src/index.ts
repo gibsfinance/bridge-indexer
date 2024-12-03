@@ -177,13 +177,16 @@ const getLatestRequiredSignatures = async (
     .limit(1)
   if (!latestSigEvents.length) {
     // probably a reorg
-    throw new Error('No latest signatures event found')
+    latestSigEvents.push({
+      requiredSignatures: 0n,
+    })
+    // throw new Error('No latest signatures event found')
   }
   const [latest] = latestSigEvents
   const required = latest?.requiredSignatures as number
-  if (!required) {
-    throw new Error('No required signatures found')
-  }
+  // if (!required) {
+  //   throw new Error('No required signatures found')
+  // }
   const requiredBigInt = BigInt(required)
   latestSigEventsUnderBridge.set(bridgeId, requiredBigInt)
   return requiredBigInt
