@@ -113,6 +113,7 @@ export const UserRequestForAffirmation = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
+    requiredSignatures: t.smallint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
@@ -156,6 +157,7 @@ export const UserRequestForSignature = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
+    requiredSignatures: t.smallint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),

@@ -147,6 +147,43 @@ ponder.on(
   },
 )
 
+const latestSigEventsUnderBridge = new Map<Hex, number>()
+
+const getLatestRequiredSignatures = async (
+  context: Context,
+  bridgeId: Hex,
+  targetOrderId: Hex,
+) => {
+  const latestSigEventUnderBridge = latestSigEventsUnderBridge.get(bridgeId)
+  if (latestSigEventUnderBridge) {
+    return latestSigEventUnderBridge
+  }
+  const latestSigEvents = await context.db.sql
+    .select({
+      requiredSignatures: PonderCore.sql`required_signatures`,
+    })
+    .from(RequiredSignaturesChange)
+    .where(
+      PonderCore.and(
+        PonderCore.eq(RequiredSignaturesChange.bridgeId, bridgeId),
+        PonderCore.lt(RequiredSignaturesChange.orderId, targetOrderId),
+      ),
+    )
+    .orderBy(PonderCore.desc(RequiredSignaturesChange.orderId))
+    .limit(1)
+  if (!latestSigEvents.length) {
+    // probably a reorg
+    throw new Error('No latest signatures event found')
+  }
+  const [latest] = latestSigEvents
+  const required = latest?.requiredSignatures as number
+  if (!required) {
+    throw new Error('No required signatures found')
+  }
+  latestSigEventsUnderBridge.set(bridgeId, required)
+  return required
+}
+
 ponder.on(
   'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
@@ -157,28 +194,33 @@ ponder.on(
     const bridgeId = ids.bridge(context, event.log.address)
     const blockId = ids.block(context, event.block.hash)
     const transactionId = ids.transaction(context, event.transaction.hash)
+    const targetOrderId = orderId(context, event)
     await Promise.all([
       upsertBlock(context, event.block),
       upsertTransaction(context, event.transaction),
       upsertBridge(context, event.log.address),
-      context.db
-        .insert(UserRequestForAffirmation)
-        .values({
-          bridgeId,
-          blockId,
-          transactionId,
-          messageHash: parsed.messageHash,
-          from: parsed.from,
-          to: parsed.to,
-          amount: parsed.nestedData.amount,
-          messageId: event.args.messageId,
-          encodedData: event.args.encodedData,
-          logIndex: event.log.logIndex,
-          originationChainId: parsed.originationChainId,
-          destinationChainId: parsed.destinationChainId,
-          orderId: orderId(context, event),
-        })
-        .onConflictDoNothing(),
+      getLatestRequiredSignatures(context, bridgeId, targetOrderId).then(
+        (requiredSignatures) =>
+          context.db
+            .insert(UserRequestForAffirmation)
+            .values({
+              bridgeId,
+              blockId,
+              transactionId,
+              requiredSignatures,
+              messageHash: parsed.messageHash,
+              from: parsed.from,
+              to: parsed.to,
+              amount: parsed.nestedData.amount,
+              messageId: event.args.messageId,
+              encodedData: event.args.encodedData,
+              logIndex: event.log.logIndex,
+              originationChainId: parsed.originationChainId,
+              destinationChainId: parsed.destinationChainId,
+              orderId: targetOrderId,
+            })
+            .onConflictDoNothing(),
+      ),
     ])
   },
 )
@@ -188,6 +230,7 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
   const blockId = ids.block(context, event.block.hash)
   const transactionId = ids.transaction(context, event.transaction.hash)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
+  const targetOrderId = orderId(context, event)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -207,21 +250,28 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
           })
           .onConflictDoNothing()
       : null,
-    context.db.insert(UserRequestForSignature).values({
-      bridgeId,
-      blockId,
-      transactionId,
-      amount: parsed.nestedData.amount,
-      messageId: event.args.messageId,
-      from: parsed.from,
-      encodedData: event.args.encodedData,
-      messageHash: parsed.messageHash,
-      to: parsed.to,
-      logIndex: event.log.logIndex,
-      originationChainId: parsed.originationChainId,
-      destinationChainId: parsed.destinationChainId,
-      orderId: orderId(context, event),
-    }),
+    getLatestRequiredSignatures(context, bridgeId, targetOrderId).then(
+      (requiredSignatures) =>
+        context.db
+          .insert(UserRequestForSignature)
+          .values({
+            bridgeId,
+            blockId,
+            transactionId,
+            requiredSignatures,
+            amount: parsed.nestedData.amount,
+            messageId: event.args.messageId,
+            from: parsed.from,
+            encodedData: event.args.encodedData,
+            messageHash: parsed.messageHash,
+            to: parsed.to,
+            logIndex: event.log.logIndex,
+            originationChainId: parsed.originationChainId,
+            destinationChainId: parsed.destinationChainId,
+            orderId: targetOrderId,
+          })
+          .onConflictDoNothing(),
+    ),
   ])
 })
 
