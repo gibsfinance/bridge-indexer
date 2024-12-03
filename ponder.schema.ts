@@ -84,7 +84,7 @@ export const RequiredSignaturesChange = onchainTable(
   (t) => ({
     orderId: t.hex().primaryKey(),
     bridgeId: t.hex().notNull(),
-    requiredSignatures: t.smallint().notNull(),
+    requiredSignatures: t.bigint().notNull(),
     transactionId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
@@ -113,7 +113,7 @@ export const UserRequestForAffirmation = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
-    requiredSignatures: t.smallint().notNull(),
+    requiredSignatures: t.bigint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
@@ -157,7 +157,7 @@ export const UserRequestForSignature = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
-    requiredSignatures: t.smallint().notNull(),
+    requiredSignatures: t.bigint().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),

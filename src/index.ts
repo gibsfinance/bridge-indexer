@@ -131,7 +131,7 @@ ponder.on(
     const transactionId = ids.transaction(context, event.transaction.hash)
     latestSigEventsUnderBridge.set(
       bridgeId,
-      Number(event.args.requiredSignatures),
+      event.args.requiredSignatures,
     )
     await Promise.all([
       upsertBridge(context, bridgeAddress),
@@ -142,7 +142,7 @@ ponder.on(
         .values({
           orderId: orderId(context, event),
           bridgeId,
-          requiredSignatures: Number(event.args.requiredSignatures),
+          requiredSignatures: event.args.requiredSignatures,
           transactionId,
           logIndex: event.log.logIndex,
         })
@@ -151,7 +151,7 @@ ponder.on(
   },
 )
 
-const latestSigEventsUnderBridge = new Map<Hex, number>()
+const latestSigEventsUnderBridge = new Map<Hex, bigint>()
 
 const getLatestRequiredSignatures = async (
   context: Context,
@@ -184,8 +184,9 @@ const getLatestRequiredSignatures = async (
   if (!required) {
     throw new Error('No required signatures found')
   }
-  latestSigEventsUnderBridge.set(bridgeId, required)
-  return required
+  const requiredBigInt = BigInt(required)
+  latestSigEventsUnderBridge.set(bridgeId, requiredBigInt)
+  return requiredBigInt
 }
 
 ponder.on(
