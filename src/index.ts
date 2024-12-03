@@ -129,6 +129,10 @@ ponder.on(
     const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
     const bridgeId = ids.bridge(context, bridgeAddress)
     const transactionId = ids.transaction(context, event.transaction.hash)
+    latestSigEventsUnderBridge.set(
+      bridgeId,
+      Number(event.args.requiredSignatures),
+    )
     await Promise.all([
       upsertBridge(context, bridgeAddress),
       upsertBlock(context, event.block),
