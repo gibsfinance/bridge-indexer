@@ -282,6 +282,20 @@ export const UserRequestForAffirmationRelations = relations(
   }),
 )
 
+export const RequiredSignaturesChangeRelations = relations(
+  RequiredSignaturesChange,
+  (t) => ({
+    transaction: t.one(Transaction, {
+      fields: [RequiredSignaturesChange.transactionId],
+      references: [Transaction.transactionId],
+    }),
+    bridge: t.one(BridgeSide, {
+      fields: [RequiredSignaturesChange.bridgeId],
+      references: [BridgeSide.bridgeId],
+    }),
+  }),
+)
+
 export const UserRequestForSignatureRelations = relations(
   UserRequestForSignature,
   (t) => ({

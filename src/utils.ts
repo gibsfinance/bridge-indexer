@@ -173,7 +173,7 @@ export const getValidatorContract = async (
   client: PublicClient,
 ) => {
   const address = pathways[provider]![from]![to]![side]!
-  const key = `${provider}-${from}-${to}-${side}-${address}`
+  const key = `${provider}-${from}-${to}-${side}-${address.toLowerCase()}`
   if (bridgeValidatorCache.has(key)) {
     return bridgeValidatorCache.get(key)!
   }
@@ -186,6 +186,19 @@ export const getValidatorContract = async (
   bridgeValidatorCache.set(key, result)
   return result
 }
+
+export const getValidatorAddressFromBridge = _.memoize(
+  async (bridgeAddress: Hex) => {
+    const entries = [...bridgeValidatorCache.entries()]
+    for (const [key, value] of entries) {
+      const keyPortion = key.split('-')[4]!
+      if (getAddress(keyPortion) === getAddress(bridgeAddress)) {
+        return value
+      }
+    }
+    throw new Error('No key found')
+  },
+)
 
 export const getBridgeAddressFromValidator = _.memoize(
   async (validatorAddress: Hex) => {
