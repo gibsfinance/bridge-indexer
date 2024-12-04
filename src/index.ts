@@ -7,6 +7,7 @@ import {
   FeeDirector,
   RelayMessage,
   RequiredSignaturesChange,
+  ReverseMessageHashBinding,
   SignedForAffirmation,
   SignedForUserRequest,
   Transaction,
@@ -217,6 +218,11 @@ ponder.on(
       upsertBlock(context, event.block),
       upsertTransaction(context, event.transaction),
       upsertBridge(context, event.log.address),
+      context.db.insert(ReverseMessageHashBinding).values({
+        messageHash: parsed.messageHash,
+        bridgeId,
+        messageId: event.args.messageId,
+      }),
       getLatestRequiredSignatures(
         context,
         bridgeId,
@@ -240,6 +246,8 @@ ponder.on(
             originationChainId: parsed.originationChainId,
             destinationChainId: parsed.destinationChainId,
             orderId: targetOrderId,
+            confirmedSignatures: 0n,
+            finishedSigning: false,
           })
           .onConflictDoNothing(),
       ),
@@ -260,6 +268,11 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
+    context.db.insert(ReverseMessageHashBinding).values({
+      messageHash: parsed.messageHash,
+      bridgeId,
+      messageId: event.args.messageId,
+    }),
     parsed.feeDirector
       ? context.db
           .insert(FeeDirector)
@@ -298,6 +311,8 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
           originationChainId: parsed.originationChainId,
           destinationChainId: parsed.destinationChainId,
           orderId: targetOrderId,
+          confirmedSignatures: 0n,
+          finishedSigning: false,
         })
         .onConflictDoNothing(),
     ),
@@ -310,10 +325,22 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer)
   const blockId = ids.block(context, event.block.hash)
   const transactionId = ids.transaction(context, event.transaction.hash)
+  const messageInfo = await context.db.find(ReverseMessageHashBinding, {
+    messageHash,
+  })
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
+    context.db
+      .update(UserRequestForAffirmation, {
+        messageId: messageInfo!.messageId,
+      })
+      .set((row) => ({
+        confirmedSignatures: row.confirmedSignatures + 1n,
+        finishedSigning:
+          row.confirmedSignatures + 1n === row.requiredSignatures,
+      })),
     context.db
       .insert(SignedForAffirmation)
       .values({
@@ -335,10 +362,22 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer)
   const blockId = ids.block(context, event.block.hash)
   const transactionId = ids.transaction(context, event.transaction.hash)
+  const messageInfo = await context.db.find(ReverseMessageHashBinding, {
+    messageHash,
+  })
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
+    context.db
+      .update(UserRequestForSignature, {
+        messageId: messageInfo!.messageId,
+      })
+      .set((row) => ({
+        confirmedSignatures: row.confirmedSignatures + 1n,
+        finishedSigning:
+          row.confirmedSignatures + 1n === row.requiredSignatures,
+      })),
     context.db
       .insert(SignedForUserRequest)
       .values({

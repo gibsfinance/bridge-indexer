@@ -114,11 +114,14 @@ export const UserRequestForAffirmation = onchainTable(
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
     requiredSignatures: t.bigint().notNull(),
+    confirmedSignatures: t.bigint().notNull(),
+    finishedSigning: t.boolean().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
     messageHashIndex: index().on(t.messageHash),
     bridgeIdIndex: index().on(t.bridgeId),
+    finishedSigningIndex: index().on(t.finishedSigning),
   }),
 )
 export const FeeDirector = onchainTable(
@@ -158,11 +161,26 @@ export const UserRequestForSignature = onchainTable(
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
     requiredSignatures: t.bigint().notNull(),
+    confirmedSignatures: t.bigint().notNull(),
+    finishedSigning: t.boolean().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
     messageHashIndex: index().on(t.messageHash),
     bridgeIdIndex: index().on(t.bridgeId),
+    finishedSigningIndex: index().on(t.finishedSigning),
+  }),
+)
+
+export const ReverseMessageHashBinding = onchainTable(
+  'ReverseMessageHashBinding',
+  (t) => ({
+    messageHash: t.hex().notNull().primaryKey(),
+    messageId: t.hex().notNull(),
+  }),
+  (t) => ({
+    messageHashIndex: index().on(t.messageHash),
+    messageIdIndex: index().on(t.messageId),
   }),
 )
 
