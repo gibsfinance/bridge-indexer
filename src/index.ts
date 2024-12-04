@@ -325,16 +325,35 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer)
   const blockId = ids.block(context, event.block.hash)
   const transactionId = ids.transaction(context, event.transaction.hash)
-  const messageInfo = await context.db.find(ReverseMessageHashBinding, {
+  let messageInfo = await context.db.find(ReverseMessageHashBinding, {
     messageHash,
   })
+  if (!messageInfo) {
+    // probably a reorg
+    const userRequests = await context.db.sql
+      .select({
+        messageId: PonderCore.sql`message_id`,
+      })
+      .from(UserRequestForAffirmation)
+      .where(PonderCore.eq(UserRequestForAffirmation.messageHash, messageHash))
+      .limit(1)
+    messageInfo = {
+      messageId: userRequests[0]!.messageId as Hex,
+      messageHash,
+    }
+    await context.db.insert(ReverseMessageHashBinding).values({
+      messageHash,
+      bridgeId,
+      messageId: messageInfo.messageId,
+    })
+  }
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     context.db
       .update(UserRequestForAffirmation, {
-        messageId: messageInfo!.messageId,
+        messageId: messageInfo.messageId,
       })
       .set((row) => ({
         confirmedSignatures: row.confirmedSignatures + 1n,
@@ -362,16 +381,35 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer)
   const blockId = ids.block(context, event.block.hash)
   const transactionId = ids.transaction(context, event.transaction.hash)
-  const messageInfo = await context.db.find(ReverseMessageHashBinding, {
+  let messageInfo = await context.db.find(ReverseMessageHashBinding, {
     messageHash,
   })
+  if (!messageInfo) {
+    // probably a reorg
+    const userRequests = await context.db.sql
+      .select({
+        messageId: PonderCore.sql`message_id`,
+      })
+      .from(UserRequestForSignature)
+      .where(PonderCore.eq(UserRequestForSignature.messageHash, messageHash))
+      .limit(1)
+    messageInfo = {
+      messageId: userRequests[0]!.messageId as Hex,
+      messageHash,
+    }
+    await context.db.insert(ReverseMessageHashBinding).values({
+      messageHash,
+      bridgeId,
+      messageId: messageInfo.messageId,
+    })
+  }
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     context.db
       .update(UserRequestForSignature, {
-        messageId: messageInfo!.messageId,
+        messageId: messageInfo.messageId,
       })
       .set((row) => ({
         confirmedSignatures: row.confirmedSignatures + 1n,
