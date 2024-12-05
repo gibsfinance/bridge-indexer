@@ -79,12 +79,12 @@ export const BridgeSide = onchainTable(
   }),
 )
 
-export const RequiredSignaturesChange = onchainTable(
-  'RequiredSignatureChange',
+export const RequiredSignaturesChanged = onchainTable(
+  'RequiredSignaturesChanged',
   (t) => ({
     orderId: t.hex().primaryKey(),
     bridgeId: t.hex().notNull(),
-    requiredSignatures: t.bigint().notNull(),
+    value: t.bigint().notNull(),
     transactionId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
@@ -92,6 +92,25 @@ export const RequiredSignaturesChange = onchainTable(
     bridgeId: index().on(t.bridgeId),
     orderId: index().on(t.orderId),
     transactionId: index().on(t.transactionId),
+  }),
+)
+
+export const LatestRequiredSignaturesChanged = onchainTable(
+  'LatestRequiredSignaturesChanged',
+  (t) => ({
+    bridgeId: t.hex().primaryKey(),
+    orderId: t.hex().notNull(), // used as primary key for required_signatures_change table
+    value: t.bigint().notNull(),
+  }),
+)
+
+export const LatestRequiredSignaturesChangedRelations = relations(
+  LatestRequiredSignaturesChanged,
+  (t) => ({
+    bridge: t.one(BridgeSide, {
+      fields: [LatestRequiredSignaturesChanged.bridgeId],
+      references: [BridgeSide.bridgeId],
+    }),
   }),
 )
 
@@ -113,7 +132,7 @@ export const UserRequestForAffirmation = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
-    requiredSignatures: t.bigint().notNull(),
+    requiredSignatureId: t.hex().notNull(),
     confirmedSignatures: t.bigint().notNull(),
     finishedSigning: t.boolean().notNull(),
   }),
@@ -122,6 +141,7 @@ export const UserRequestForAffirmation = onchainTable(
     messageHashIndex: index().on(t.messageHash),
     bridgeIdIndex: index().on(t.bridgeId),
     finishedSigningIndex: index().on(t.finishedSigning),
+    requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
   }),
 )
 export const FeeDirector = onchainTable(
@@ -160,7 +180,7 @@ export const UserRequestForSignature = onchainTable(
     bridgeId: t.hex().notNull(),
     originationChainId: t.bigint().notNull(),
     destinationChainId: t.bigint().notNull(),
-    requiredSignatures: t.bigint().notNull(),
+    requiredSignatureId: t.hex().notNull(),
     confirmedSignatures: t.bigint().notNull(),
     finishedSigning: t.boolean().notNull(),
   }),
@@ -169,6 +189,7 @@ export const UserRequestForSignature = onchainTable(
     messageHashIndex: index().on(t.messageHash),
     bridgeIdIndex: index().on(t.bridgeId),
     finishedSigningIndex: index().on(t.finishedSigning),
+    requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
   }),
 )
 
@@ -264,14 +285,24 @@ export const TransactionRelations = relations(Transaction, (t) => ({
     fields: [Transaction.blockId],
     references: [Block.blockId],
   }),
+  userRequestForSignature: t.many(UserRequestForSignature),
+  userRequestForAffirmation: t.many(UserRequestForAffirmation),
+  signedForUserRequest: t.many(SignedForUserRequest),
+  signedForAffirmation: t.many(SignedForAffirmation),
+  affirmationComplete: t.many(AffirmationComplete),
+  relayMessage: t.many(RelayMessage),
 }))
 
-export const RequiredSignaturesChangesRelations = relations(
-  RequiredSignaturesChange,
+export const RequiredSignaturesChangedRelations = relations(
+  RequiredSignaturesChanged,
   (t) => ({
     transaction: t.one(Transaction, {
-      fields: [RequiredSignaturesChange.transactionId],
+      fields: [RequiredSignaturesChanged.transactionId],
       references: [Transaction.transactionId],
+    }),
+    bridge: t.one(BridgeSide, {
+      fields: [RequiredSignaturesChanged.bridgeId],
+      references: [BridgeSide.bridgeId],
     }),
   }),
 )
@@ -297,19 +328,9 @@ export const UserRequestForAffirmationRelations = relations(
       fields: [UserRequestForAffirmation.bridgeId],
       references: [BridgeSide.bridgeId],
     }),
-  }),
-)
-
-export const RequiredSignaturesChangeRelations = relations(
-  RequiredSignaturesChange,
-  (t) => ({
-    transaction: t.one(Transaction, {
-      fields: [RequiredSignaturesChange.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    bridge: t.one(BridgeSide, {
-      fields: [RequiredSignaturesChange.bridgeId],
-      references: [BridgeSide.bridgeId],
+    requiredSignatures: t.one(RequiredSignaturesChanged, {
+      fields: [UserRequestForAffirmation.requiredSignatureId],
+      references: [RequiredSignaturesChanged.orderId],
     }),
   }),
 )
@@ -337,6 +358,10 @@ export const UserRequestForSignatureRelations = relations(
     bridge: t.one(BridgeSide, {
       fields: [UserRequestForSignature.bridgeId],
       references: [BridgeSide.bridgeId],
+    }),
+    requiredSignatures: t.one(RequiredSignaturesChanged, {
+      fields: [UserRequestForSignature.requiredSignatureId],
+      references: [RequiredSignaturesChanged.orderId],
     }),
   }),
 )

@@ -184,6 +184,13 @@ export const getValidatorContract = async (
   })
   const result = omnibridge.read.validatorContract()
   bridgeValidatorCache.set(key, result)
+  result
+    .then((validator) => {
+      console.log(address, validator, provider, from, to, side)
+    })
+    .catch((err) => {
+      console.error(err)
+    })
   return result
 }
 
