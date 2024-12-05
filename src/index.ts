@@ -177,10 +177,36 @@ ponder.on(
   },
 )
 
-const getLatestRequiredSignatures = async (context: Context, bridgeId: Hex) => {
+const getLatestRequiredSignatures = async (
+  context: Context,
+  bridgeId: Hex,
+  event: any,
+) => {
   const latest = await context.db.find(LatestRequiredSignaturesChanged, {
     bridgeId,
   })
+  if (!latest) {
+    if (context.network.chainId === 56) {
+      console.log(context.network.chainId, event.transaction.hash)
+      const [_latest, current] = await Promise.all([
+        context.db.insert(LatestRequiredSignaturesChanged).values({
+          bridgeId,
+          orderId: orderId(context, event),
+          value: 3n,
+        }),
+        context.db.insert(RequiredSignaturesChanged).values({
+          orderId: orderId(context, event),
+          bridgeId,
+          value: 3n,
+          transactionId: ids.transaction(context, event.transaction.hash),
+          logIndex: event.log.logIndex,
+        }),
+      ])
+      return current
+    } else {
+      throw new Error('no latest required signatures')
+    }
+  }
   const requiredSignatures = await context.db.find(RequiredSignaturesChanged, {
     orderId: latest!.orderId!,
   })
@@ -210,7 +236,7 @@ ponder.on(
         bridgeId,
         messageId: event.args.messageId,
       }),
-      getLatestRequiredSignatures(context, bridgeId).then(
+      getLatestRequiredSignatures(context, bridgeId, event).then(
         (requiredSignatures) =>
           context.db.insert(UserRequestForAffirmation).values({
             bridgeId,
@@ -262,25 +288,26 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
           excludePriority: parsed.feeDirector.excludePriority,
         })
       : null,
-    getLatestRequiredSignatures(context, bridgeId).then((requiredSignatures) =>
-      context.db.insert(UserRequestForSignature).values({
-        bridgeId,
-        blockId,
-        transactionId,
-        requiredSignatureId: requiredSignatures.orderId,
-        amount: parsed.nestedData.amount,
-        messageId: event.args.messageId,
-        from: parsed.from,
-        encodedData: event.args.encodedData,
-        messageHash: parsed.messageHash,
-        to: parsed.to,
-        logIndex: event.log.logIndex,
-        originationChainId: parsed.originationChainId,
-        destinationChainId: parsed.destinationChainId,
-        orderId: targetOrderId,
-        confirmedSignatures: 0n,
-        finishedSigning: false,
-      }),
+    getLatestRequiredSignatures(context, bridgeId, event).then(
+      (requiredSignatures) =>
+        context.db.insert(UserRequestForSignature).values({
+          bridgeId,
+          blockId,
+          transactionId,
+          requiredSignatureId: requiredSignatures.orderId,
+          amount: parsed.nestedData.amount,
+          messageId: event.args.messageId,
+          from: parsed.from,
+          encodedData: event.args.encodedData,
+          messageHash: parsed.messageHash,
+          to: parsed.to,
+          logIndex: event.log.logIndex,
+          originationChainId: parsed.originationChainId,
+          destinationChainId: parsed.destinationChainId,
+          orderId: targetOrderId,
+          confirmedSignatures: 0n,
+          finishedSigning: false,
+        }),
     ),
   ])
 })
@@ -296,7 +323,7 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     Promise.all([
-      getLatestRequiredSignatures(context, bridgeId),
+      getLatestRequiredSignatures(context, bridgeId, event),
       context.db.find(ReverseMessageHashBinding, {
         messageHash,
       }),
@@ -334,7 +361,7 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     Promise.all([
-      getLatestRequiredSignatures(context, bridgeId),
+      getLatestRequiredSignatures(context, bridgeId, event),
       context.db.find(ReverseMessageHashBinding, {
         messageHash,
       }),
