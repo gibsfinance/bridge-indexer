@@ -337,6 +337,9 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
       .from(UserRequestForAffirmation)
       .where(PonderCore.eq(UserRequestForAffirmation.messageHash, messageHash))
       .limit(1)
+    if (!userRequests.length) {
+      return
+    }
     messageInfo = {
       messageId: userRequests[0]!.messageId as Hex,
       messageHash,
@@ -393,6 +396,9 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
       .from(UserRequestForSignature)
       .where(PonderCore.eq(UserRequestForSignature.messageHash, messageHash))
       .limit(1)
+    if (!userRequests.length) {
+      return
+    }
     messageInfo = {
       messageId: userRequests[0]!.messageId as Hex,
       messageHash,
