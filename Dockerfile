@@ -13,4 +13,4 @@ COPY ./ponder-env.d.ts .
 RUN bun i
 
 # Run the server when the container launches
-CMD ["bun", "run", "dev"]
+CMD ["bun", "run", "start"]

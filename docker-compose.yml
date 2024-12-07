@@ -23,6 +23,7 @@ services:
       dockerfile: Dockerfile
     networks:
       - bridge-indexer
+    command: bun run start
     ports:
       - 42069:42069
     deploy:

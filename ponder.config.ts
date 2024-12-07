@@ -1,5 +1,5 @@
 import { createConfig, loadBalance, rateLimit } from '@ponder/core'
-import { createPublicClient, getContract, http, webSocket } from 'viem'
+import { createPublicClient, http, webSocket } from 'viem'
 import HomeAMBAbi from './abis/HomeAMB'
 import ForeignAMBAbi from './abis/ForeignAMB'
 import { TokenOmnibridgeAbi } from './abis/TokenOmnibridge'
