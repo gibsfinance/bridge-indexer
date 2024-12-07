@@ -75,13 +75,10 @@ const getValidatorAddress = (
 }
 
 export default createConfig({
-  database: {
-    kind: 'postgres',
-    connectionString: process.env.DATABASE_URL,
-    poolConfig: {
-      max: 100,
-    },
-  },
+  // database: {
+  //   kind: 'postgres',
+  //   connectionString: process.env.DATABASE_URL,
+  // },
   networks: {
     ethereum: {
       chainId: chains.ethereum,
