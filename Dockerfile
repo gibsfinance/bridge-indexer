@@ -9,7 +9,6 @@ COPY bun.lockb .
 COPY src/ .
 COPY abis/ .
 COPY tsconfig.json .
-COPY .env.local .
 COPY ponder.config.ts .
 COPY ponder.schema.ts .
 COPY ponder-env.d.ts .
