@@ -10,7 +10,6 @@ import {
 } from 'viem'
 import HomeAMBAbi from '../abis/HomeAMB'
 import _ from 'lodash'
-import * as PonderCore from '@ponder/core'
 
 export const chains = {
   ethereum: 1,

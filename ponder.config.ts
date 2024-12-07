@@ -44,7 +44,11 @@ const toTransport = (chainId: ChainId) => {
           : backup
       return wrapper(
         url.startsWith('http')
-          ? http(url)
+          ? http(url, {
+              timeout: 4_000,
+              retryCount: 10,
+              retryDelay: 200,
+            })
           : webSocket(url, {
               reconnect: true,
               keepAlive: true,
