@@ -1,20 +1,4 @@
 import { Context, ponder } from '@/generated'
-// import {
-//   AffirmationComplete,
-//   Block,
-//   BridgeSide,
-//   FeeDirector,
-//   LatestRequiredSignaturesChanged,
-//   RelayMessage,
-//   RequiredSignaturesChanged,
-//   ReverseMessageHashBinding,
-//   SignedForAffirmation,
-//   SignedForUserRequest,
-//   Transaction,
-//   UserRequestForAffirmation,
-//   UserRequestForSignature,
-//   ValidatorStatus,
-// } from '../ponder.schema'
 import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
 import {

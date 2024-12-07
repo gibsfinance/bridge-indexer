@@ -19,7 +19,6 @@ export default createSchema((t) => ({
     },
     {
       hash: t.index('hash'),
-      id: t.index('id'),
       number: t.index('number'),
     },
   ),
@@ -43,7 +42,6 @@ export default createSchema((t) => ({
       relayMessage: t.many('RelayMessage.transactionId'),
     },
     {
-      id: t.index('id'),
       blockId: t.index('blockId'),
       hash: t.index('hash'),
     },
@@ -57,7 +55,6 @@ export default createSchema((t) => ({
       bridge: t.one('bridgeId'),
     },
     {
-      id: t.index('id'),
       orderId: t.index('orderId'),
       bridgeId: t.index('bridgeId'),
     },
@@ -88,7 +85,6 @@ export default createSchema((t) => ({
       side: t.enum('Direction'),
     },
     {
-      id: t.index('id'),
       chainId: t.index('chainId'),
     },
   ),
@@ -103,7 +99,6 @@ export default createSchema((t) => ({
       logIndex: t.int(),
     },
     {
-      id: t.index('id'),
       bridgeId: t.index('bridgeId'),
       transactionId: t.index('transactionId'),
     },
@@ -115,7 +110,6 @@ export default createSchema((t) => ({
       orderId: t.hex().references('RequiredSignaturesChanged.id'),
     },
     {
-      id: t.index('id'),
       orderId: t.index('orderId'),
     },
   ),
@@ -140,7 +134,6 @@ export default createSchema((t) => ({
       orderId: t.hex(),
     },
     {
-      id: t.index('id'),
       blockId: t.index('blockId'),
       transactionId: t.index('transactionId'),
       bridgeId: t.index('bridgeId'),
@@ -163,7 +156,6 @@ export default createSchema((t) => ({
       excludePriority: t.boolean(),
     },
     {
-      id: t.index('id'),
       userRequestId: t.index('userRequestId'),
     },
   ),
@@ -186,7 +178,6 @@ export default createSchema((t) => ({
       delivery: t.one('deliveryId'),
     },
     {
-      id: t.index('id'),
       blockId: t.index('blockId'),
       transactionId: t.index('transactionId'),
       messageHash: t.index('messageHash'),
@@ -220,7 +211,6 @@ export default createSchema((t) => ({
       feeDirector: t.one('feeDirectorId'),
     },
     {
-      id: t.index('id'),
       blockId: t.index('blockId'),
       transactionId: t.index('transactionId'),
       bridgeId: t.index('bridgeId'),
@@ -248,7 +238,6 @@ export default createSchema((t) => ({
       bridge: t.one('bridgeId'),
     },
     {
-      id: t.index('id'),
       blockId: t.index('blockId'),
       transactionId: t.index('transactionId'),
       messageHash: t.index('messageHash'),
@@ -264,7 +253,6 @@ export default createSchema((t) => ({
       bridge: t.one('bridgeId'),
     },
     {
-      id: t.index('id'),
       userRequestId: t.index('userRequestId'),
     },
   ),
@@ -284,7 +272,6 @@ export default createSchema((t) => ({
       signatures: t.many('SignedForUserRequest.deliveryId'),
     },
     {
-      id: t.index('id'),
       messageHash: t.index('messageHash'),
       transactionId: t.index('transactionId'),
     },
@@ -305,7 +292,6 @@ export default createSchema((t) => ({
       signatures: t.many('SignedForAffirmation.deliveryId'),
     },
     {
-      id: t.index('id'),
       messageHash: t.index('messageHash'),
       transactionId: t.index('transactionId'),
     },
