@@ -1,8 +1,6 @@
 FROM --platform=$BUILDPLATFORM node:lts-slim AS base
 WORKDIR /app
 
-FROM base AS all-deps
-WORKDIR /app
 RUN npm i -g bun
 COPY package.json .
 COPY bun.lockb .
