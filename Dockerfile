@@ -1,7 +1,8 @@
 FROM --platform=$BUILDPLATFORM node:lts-slim AS base
 WORKDIR /app
-
 RUN npm i -g bun
+
+ENV DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
 COPY ./package.json /app/package.json
 COPY ./bun.lockb /app/bun.lockb
 COPY ./src/ /app/src/

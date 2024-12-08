@@ -26,6 +26,8 @@ services:
     command: bun run start
     ports:
       - 42069:42069
+    depends_on:
+      - postgres-bridge-indexer
     deploy:
       resources:
         limits:
@@ -42,6 +44,11 @@ services:
     environment:
       - NODE_OPTIONS="--max-old-space-size=8192"
       - DATABASE_URL=postgresql://bridge-indexer:password@postgres-bridge-indexer:5432/bridge-indexer
+      - PONDER_RPC_URL_943=https://rpc.v4.testnet.pulsechain.com
+      - PONDER_RPC_URL_369=https://rpc.pulsechain.com
+      - PONDER_RPC_URL_1=${PONDER_RPC_URL_1}
+      - PONDER_RPC_URL_56=${PONDER_RPC_URL_56}
+      - PONDER_RPC_URL_11155111=${PONDER_RPC_URL_11155111}
 
 networks:
   bridge-indexer:

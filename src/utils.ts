@@ -1,15 +1,19 @@
 import type { Context } from '@/generated'
 import {
   concatHex,
+  createPublicClient,
   getAddress,
   getContract,
+  http,
   keccak256,
   numberToHex,
   PublicClient,
+  webSocket,
   type Hex,
 } from 'viem'
 import HomeAMBAbi from '../abis/HomeAMB'
 import _ from 'lodash'
+import { loadBalance, rateLimit } from '@ponder/core'
 
 export const chains = {
   ethereum: 1,
@@ -233,4 +237,62 @@ export const orderId = (context: Context, event: any) => {
     numberToHex(BigInt(event.log.logIndex), { size: 8 }),
     numberToHex(context.network.chainId, { size: 8 }),
   ])
+}
+
+export const gatherTransportList = (chainId: ChainId) => {
+  let index = 0
+  const list = []
+  if (process.env[`PONDER_RPC_URL_${chainId}`]) {
+    list.push(process.env[`PONDER_RPC_URL_${chainId}`]!)
+  }
+  while (process.env[`PONDER_RPC_URL_${chainId}_${index}`]) {
+    list.push(process.env[`PONDER_RPC_URL_${chainId}_${index}`]!)
+    index++
+  }
+  return list
+}
+
+export const toTransport = (chainId: ChainId) => {
+  const list = gatherTransportList(chainId)
+  const backup = (a: any) => a
+  const rateLimitSettings = {
+    browser: false,
+    requestsPerSecond: 100,
+  }
+  return loadBalance(
+    list.map((url) => {
+      const wrapper =
+        url.includes('publicnode') || url.includes('pulsechain')
+          ? rateLimit
+          : backup
+      return wrapper(
+        url.startsWith('http')
+          ? http(url, {
+              timeout: 4_000,
+              retryCount: 10,
+              retryDelay: 200,
+            })
+          : webSocket(url, {
+              reconnect: true,
+              keepAlive: true,
+              timeout: 4_000,
+              retryCount: 10,
+              retryDelay: 100,
+            }),
+        rateLimitSettings,
+      )
+    }),
+  )
+}
+
+export const getValidatorAddress = (
+  provider: Provider,
+  from: ChainId,
+  to: ChainId,
+  side: Side,
+) => {
+  const client = createPublicClient({
+    transport: toTransport(side === 'home' ? from : to),
+  })
+  return getValidatorContract(provider, from, to, side, client)
 }

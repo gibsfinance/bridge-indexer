@@ -1,95 +1,35 @@
-import { createConfig, loadBalance, rateLimit } from '@ponder/core'
-import { createPublicClient, http, webSocket } from 'viem'
+import { createConfig } from '@ponder/core'
 import HomeAMBAbi from './abis/HomeAMB'
 import ForeignAMBAbi from './abis/ForeignAMB'
 import { TokenOmnibridgeAbi } from './abis/TokenOmnibridge'
 import BaseBridgeValidatorsAbi from './abis/BaseBridgeValidators'
 import {
-  type ChainId,
-  type Provider,
   chains,
   pathways,
-  Side,
-  getValidatorContract,
   Providers,
+  getValidatorAddress,
+  toTransport,
 } from './src/utils'
 
 Error.stackTraceLimit = Infinity
-
-const gatherTransportList = (chainId: ChainId) => {
-  let index = 0
-  const list = []
-  if (process.env[`PONDER_RPC_URL_${chainId}`]) {
-    list.push(process.env[`PONDER_RPC_URL_${chainId}`]!)
-  }
-  while (process.env[`PONDER_RPC_URL_${chainId}_${index}`]) {
-    list.push(process.env[`PONDER_RPC_URL_${chainId}_${index}`]!)
-    index++
-  }
-  return list
-}
-
-const toTransport = (chainId: ChainId) => {
-  const list = gatherTransportList(chainId)
-  const backup = (a: any) => a
-  const rateLimitSettings = {
-    browser: false,
-    requestsPerSecond: 100,
-  }
-  return loadBalance(
-    list.map((url) => {
-      const wrapper =
-        url.includes('publicnode') || url.includes('pulsechain')
-          ? rateLimit
-          : backup
-      return wrapper(
-        url.startsWith('http')
-          ? http(url, {
-              timeout: 4_000,
-              retryCount: 10,
-              retryDelay: 200,
-            })
-          : webSocket(url, {
-              reconnect: true,
-              keepAlive: true,
-              timeout: 4_000,
-              retryCount: 10,
-              retryDelay: 100,
-            }),
-        rateLimitSettings,
-      )
-    }),
-  )
-}
-
-const getValidatorAddress = (
-  provider: Provider,
-  from: ChainId,
-  to: ChainId,
-  side: Side,
-) => {
-  const client = createPublicClient({
-    transport: toTransport(side === 'home' ? from : to),
-  })
-  return getValidatorContract(provider, from, to, side, client)
-}
+console.log(process.env)
 
 export default createConfig({
-  // database: {
-  //   kind: 'postgres',
-  //   connectionString: process.env.DATABASE_URL,
-  // },
+  database: {
+    kind: 'postgres',
+    connectionString: process.env.DATABASE_URL,
+  },
   networks: {
     ethereum: {
       chainId: chains.ethereum,
       transport: toTransport(chains.ethereum),
-      pollingInterval: 6_000,
+      pollingInterval: 5_000,
       maxRequestsPerSecond: 1_000,
     },
     bsc: {
       chainId: chains.bsc,
       transport: toTransport(chains.bsc),
-      pollingInterval: 3_000,
+      pollingInterval: 5_000,
       maxRequestsPerSecond: 1_000,
     },
     pulsechain: {
@@ -107,7 +47,7 @@ export default createConfig({
     sepolia: {
       chainId: chains.sepolia,
       transport: toTransport(chains.sepolia),
-      pollingInterval: 6_000,
+      pollingInterval: 5_000,
       maxRequestsPerSecond: 1_000,
     },
   },
