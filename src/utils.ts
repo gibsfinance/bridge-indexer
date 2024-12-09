@@ -2,6 +2,7 @@ import type { Context } from '@/generated'
 import {
   concatHex,
   createPublicClient,
+  fallback,
   getAddress,
   getContract,
   http,
@@ -13,7 +14,7 @@ import {
 } from 'viem'
 import HomeAMBAbi from '../abis/HomeAMB'
 import _ from 'lodash'
-import { loadBalance, rateLimit } from '@ponder/core'
+import { rateLimit } from '@ponder/core'
 
 export const chains = {
   ethereum: 1,
@@ -257,9 +258,9 @@ export const toTransport = (chainId: ChainId) => {
   const backup = (a: any) => a
   const rateLimitSettings = {
     browser: false,
-    requestsPerSecond: 100,
+    requestsPerSecond: 1000,
   }
-  return loadBalance(
+  return fallback(
     list.map((url) => {
       const wrapper =
         url.includes('publicnode') || url.includes('pulsechain')

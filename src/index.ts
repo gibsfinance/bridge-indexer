@@ -185,28 +185,30 @@ const getLatestRequiredSignatures = async (
   const latest = await context.db.find(LatestRequiredSignaturesChanged, {
     bridgeId,
   })
-  // if (!latest) {
-  //   if (context.network.chainId === 56) {
-  //     console.log(context.network.chainId, event.transaction.hash)
-  //     const [_latest, current] = await Promise.all([
-  //       context.db.insert(LatestRequiredSignaturesChanged).values({
-  //         bridgeId,
-  //         orderId: orderId(context, event),
-  //         value: 3n,
-  //       }),
-  //       context.db.insert(RequiredSignaturesChanged).values({
-  //         orderId: orderId(context, event),
-  //         bridgeId,
-  //         value: 3n,
-  //         transactionId: ids.transaction(context, event.transaction.hash),
-  //         logIndex: event.log.logIndex,
-  //       }),
-  //     ])
-  //     return current
-  //   } else {
-  //     throw new Error('no latest required signatures')
-  //   }
-  // }
+  if (!latest) {
+    if (context.network.chainId === 56) {
+      console.log(context.network.chainId, event.transaction.hash)
+      const [_latest, current] = await Promise.all([
+        context.db.insert(LatestRequiredSignaturesChanged).values({
+          bridgeId,
+          orderId: orderId(context, event),
+          value: 3n,
+        }),
+        context.db.insert(RequiredSignaturesChanged).values({
+          orderId: orderId(context, event),
+          bridgeId,
+          value: 3n,
+          transactionId: ids.transaction(context, event.transaction.hash),
+          logIndex: event.log.logIndex,
+        }),
+        upsertTransaction(context, event.transaction),
+        upsertBlock(context, event.block),
+      ])
+      return current
+    } else {
+      throw new Error('no latest required signatures')
+    }
+  }
   const requiredSignatures = await context.db.find(RequiredSignaturesChanged, {
     orderId: latest!.orderId!,
   })
