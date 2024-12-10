@@ -250,7 +250,6 @@ ponder.on(
       upsertBridge(context, event.log.address),
       context.db.insert(ReverseMessageHashBinding).values({
         messageHash: parsed.messageHash,
-        bridgeId,
         messageId: event.args.messageId,
       }),
       getLatestRequiredSignatures(context, bridgeId, event).then(
@@ -290,7 +289,6 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
     upsertBridge(context, event.log.address),
     context.db.insert(ReverseMessageHashBinding).values({
       messageHash: parsed.messageHash,
-      bridgeId,
       messageId: event.args.messageId,
     }),
     parsed.feeDirector
