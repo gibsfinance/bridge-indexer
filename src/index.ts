@@ -11,10 +11,10 @@ import {
   ReverseMessageHashBinding,
   SignedForAffirmation,
   SignedForUserRequest,
-  Transaction,
   UserRequestForAffirmation,
   UserRequestForSignature,
   ValidatorStatus,
+  Transaction,
 } from '../ponder.schema'
 import type { Hex } from 'viem'
 import { parseAMBMessage } from './message'
@@ -27,69 +27,81 @@ import {
 import _ from 'lodash'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
+  const b = cache.get(`block-${context.network.chainId}`)
+  if (b) {
+    return b as typeof Block.$inferSelect
+  }
   const blockId = ids.block(context, block.hash)
-  // const blockInfo = await context.db.find(Block, {
-  //   blockId,
-  // })
-  // if (blockInfo) {
-  //   return blockInfo
-  // }
-  return await context.db
-    .insert(Block)
-    .values({
-      blockId: ids.block(context, block.hash),
-      chainId: context.network.chainId.toString(),
-      hash: block.hash,
-      number: block.number,
-      timestamp: block.timestamp,
-      baseFeePerGas: block.baseFeePerGas,
-    })
-    .onConflictDoUpdate((row) => ({
-      baseFeePerGas: row.baseFeePerGas,
-    }))
+  const blockInfo = await context.db.find(Block, {
+    blockId,
+  })
+  if (blockInfo) {
+    return blockInfo
+  }
+  return await context.db.insert(Block).values({
+    blockId,
+    chainId: context.network.chainId.toString(),
+    hash: block.hash,
+    number: block.number,
+    timestamp: block.timestamp,
+    baseFeePerGas: block.baseFeePerGas,
+  })
 }
+
+const cache = new Map<string, any>()
 
 const upsertTransaction = async (
   context: Context,
   transaction: PonderCore.Transaction,
 ) => {
+  const tx = cache.get(`tx-${context.network.chainId}`)
+  if (tx) {
+    return tx as typeof Transaction.$inferSelect
+  }
   const transactionId = ids.transaction(context, transaction.hash)
-  return await context.db
-    .insert(Transaction)
-    .values({
-      transactionId: transactionId,
-      blockId: ids.block(context, transaction.blockHash),
-      hash: transaction.hash,
-      index: transaction.transactionIndex.toString(),
-      from: transaction.from,
-      to: transaction.to!,
-      value: transaction.value,
-      maxFeePerGas: transaction.maxFeePerGas,
-      maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
-      gas: transaction.gas,
-      gasPrice: transaction.gasPrice,
-      nonce: BigInt(transaction.nonce),
-      type: transaction.type,
-    })
-    .onConflictDoUpdate((row) => ({
-      maxFeePerGas: row.maxFeePerGas,
-    }))
+  const transactionInfo = await context.db.find(Transaction, {
+    transactionId,
+  })
+  if (transactionInfo) {
+    return transactionInfo
+  }
+  return await context.db.insert(Transaction).values({
+    transactionId: transactionId,
+    blockId: ids.block(context, transaction.blockHash),
+    hash: transaction.hash,
+    index: transaction.transactionIndex.toString(),
+    from: transaction.from,
+    to: transaction.to!,
+    value: transaction.value,
+    maxFeePerGas: transaction.maxFeePerGas,
+    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
+    gas: transaction.gas,
+    gasPrice: transaction.gasPrice,
+    nonce: BigInt(transaction.nonce),
+    type: transaction.type,
+  })
 }
 
 const upsertBridge = async (context: Context, address: Hex) => {
+  const bridgeId = ids.bridge(context, address)
+  const b = cache.get(`bridge-${context.network.chainId}-${bridgeId}`)
+  if (b) {
+    return b as typeof BridgeSide.$inferSelect
+  }
+  const bridgeSide = await context.db.find(BridgeSide, {
+    bridgeId,
+  })
+  if (bridgeSide) {
+    return bridgeSide
+  }
   const info = bridgeInfo(address)
-  return await context.db
-    .insert(BridgeSide)
-    .values({
-      bridgeId: ids.bridge(context, address),
-      chainId: context.network.chainId.toString(),
-      address: info!.address,
-      provider: info!.provider,
-      side: info!.side,
-    })
-    .onConflictDoUpdate((row) => ({
-      provider: row.provider,
-    }))
+  return await context.db.insert(BridgeSide).values({
+    bridgeId: ids.bridge(context, address),
+    chainId: context.network.chainId.toString(),
+    address: info!.address,
+    provider: info!.provider,
+    side: info!.side,
+  })
 }
 
 ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
@@ -126,20 +138,15 @@ ponder.on('ValidatorContract:ValidatorRemoved', async ({ event, context }) => {
     upsertBridge(context, bridgeAddress),
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
-    context.db
-      .insert(ValidatorStatus)
-      .values({
-        validatorId,
-        orderId: eventOrderId,
-        bridgeId,
-        address: event.args.validator,
-        active: false,
-        transactionId,
-        logIndex: event.log.logIndex,
-      })
-      .onConflictDoUpdate((row) => ({
-        active: row.active,
-      })),
+    context.db.insert(ValidatorStatus).values({
+      validatorId,
+      orderId: eventOrderId,
+      bridgeId,
+      address: event.args.validator,
+      active: false,
+      transactionId,
+      logIndex: event.log.logIndex,
+    }),
   ])
 })
 
