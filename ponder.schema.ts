@@ -1,441 +1,299 @@
-import {
-  index,
-  onchainEnum,
-  onchainTable,
-  primaryKey,
-  relations,
-} from '@ponder/core'
+import { createSchema } from '@ponder/core'
 
-export const Block = onchainTable(
-  'Block',
-  (t) => ({
-    blockId: t.hex().primaryKey(),
-    chainId: t.numeric().notNull(),
-    hash: t.hex().notNull(),
-    number: t.bigint().notNull(),
-    timestamp: t.bigint().notNull(),
-    baseFeePerGas: t.bigint(),
-  }),
-  (t) => ({
-    hash: index().on(t.hash),
-    blockId: index().on(t.blockId),
-    number: index().on(t.number),
-  }),
-)
-
-export const Transaction = onchainTable(
-  'Transaction',
-  (t) => ({
-    transactionId: t.hex().primaryKey(),
-    blockId: t.hex().notNull(),
-    hash: t.hex().notNull(),
-    index: t.numeric().notNull(),
-    from: t.hex().notNull(),
-    to: t.hex().notNull(),
-    value: t.bigint().notNull(),
-  }),
-  (t) => ({
-    hash: index().on(t.hash),
-    blockId: index().on(t.blockId),
-    transactionId: index().on(t.transactionId),
-  }),
-)
-
-export const ValidatorStatus = onchainTable(
-  'ValidatorStatus',
-  (t) => ({
-    validatorId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    transactionId: t.hex().notNull(),
-    address: t.hex().notNull(),
-    bridgeId: t.hex().notNull(),
-    active: t.boolean().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    pk: primaryKey({ columns: [t.validatorId, t.orderId] }),
-    validatorId: index().on(t.validatorId),
-    bridgeId: index().on(t.bridgeId),
-    transactionId: index().on(t.transactionId),
-  }),
-)
-
-export const Direction = onchainEnum('Direction', ['home', 'foreign'])
-
-export const Provider = onchainEnum('Provider', ['pulsechain', 'tokensex'])
-
-export const BridgeSide = onchainTable(
-  'BridgeSide',
-  (t) => ({
-    bridgeId: t.hex().primaryKey(),
-    chainId: t.numeric().notNull(),
-    address: t.hex().notNull(),
-    provider: Provider().notNull(),
-    side: Direction().notNull(),
-  }),
-  (t) => ({
-    bridgeId: index().on(t.bridgeId),
-    chainId: index().on(t.chainId),
-  }),
-)
-
-export const RequiredSignaturesChanged = onchainTable(
-  'RequiredSignaturesChanged',
-  (t) => ({
-    orderId: t.hex().primaryKey(),
-    bridgeId: t.hex().notNull(),
-    value: t.bigint().notNull(),
-    transactionId: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    bridgeId: index().on(t.bridgeId),
-    orderId: index().on(t.orderId),
-    transactionId: index().on(t.transactionId),
-  }),
-)
-
-export const LatestRequiredSignaturesChanged = onchainTable(
-  'LatestRequiredSignaturesChanged',
-  (t) => ({
-    bridgeId: t.hex().primaryKey(),
-    orderId: t.hex().notNull(), // used as primary key for required_signatures_change table
-    value: t.bigint().notNull(),
-  }),
-)
-
-export const LatestRequiredSignaturesChangedRelations = relations(
-  LatestRequiredSignaturesChanged,
-  (t) => ({
-    bridge: t.one(BridgeSide, {
-      fields: [LatestRequiredSignaturesChanged.bridgeId],
-      references: [BridgeSide.bridgeId],
-    }),
-  }),
-)
-
-// user initated going from foreign chain to home chain
-export const UserRequestForAffirmation = onchainTable(
-  'UserRequestForAffirmation',
-  (t) => ({
-    blockId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    transactionId: t.hex().notNull(),
-    // should be unique to each bridge across all chains
-    messageId: t.hex().primaryKey().notNull(),
-    messageHash: t.hex().notNull(),
-    from: t.hex().notNull(),
-    to: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    encodedData: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-    bridgeId: t.hex().notNull(),
-    originationChainId: t.bigint().notNull(),
-    destinationChainId: t.bigint().notNull(),
-    requiredSignatureId: t.hex().notNull(),
-    confirmedSignatures: t.bigint().notNull(),
-    finishedSigning: t.boolean().notNull(),
-  }),
-  (t) => ({
-    messageIdIndex: index().on(t.messageId),
-    messageHashIndex: index().on(t.messageHash),
-    bridgeIdIndex: index().on(t.bridgeId),
-    finishedSigningIndex: index().on(t.finishedSigning),
-    requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
-  }),
-)
-export const FeeDirector = onchainTable(
-  'FeeDirector',
-  (t) => ({
-    messageId: t.hex().primaryKey(),
-    recipient: t.hex().notNull(),
-    settings: t.bigint().notNull(),
-    limit: t.bigint().notNull(),
-    multiplier: t.bigint().notNull(),
-    feeType: t.text().notNull(),
-    unwrapped: t.boolean().notNull(),
-    excludePriority: t.boolean().notNull(),
-  }),
-  (t) => ({
-    messageIdIndex: index().on(t.messageId),
-  }),
-)
-
-// user initated going from home chain to foreign chain
-export const UserRequestForSignature = onchainTable(
-  'UserRequestForSignature',
-  (t) => ({
-    // references the block and transaction that the request was made in
-    blockId: t.hex().notNull(),
-    transactionId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    // should be unique to each bridge across all chains
-    messageHash: t.hex().notNull(),
-    from: t.hex().notNull(),
-    to: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    messageId: t.hex().primaryKey(),
-    encodedData: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-    bridgeId: t.hex().notNull(),
-    originationChainId: t.bigint().notNull(),
-    destinationChainId: t.bigint().notNull(),
-    requiredSignatureId: t.hex().notNull(),
-    confirmedSignatures: t.bigint().notNull(),
-    finishedSigning: t.boolean().notNull(),
-  }),
-  (t) => ({
-    messageIdIndex: index().on(t.messageId),
-    messageHashIndex: index().on(t.messageHash),
-    bridgeIdIndex: index().on(t.bridgeId),
-    finishedSigningIndex: index().on(t.finishedSigning),
-    requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
-  }),
-)
-
-export const ReverseMessageHashBinding = onchainTable(
-  'ReverseMessageHashBinding',
-  (t) => ({
-    messageHash: t.hex().notNull().primaryKey(),
-    messageId: t.hex().notNull(),
-  }),
-  (t) => ({
-    messageHashIndex: index().on(t.messageHash),
-    messageIdIndex: index().on(t.messageId),
-  }),
-)
-
-export const FeeDirectorRelations = relations(FeeDirector, (t) => ({
-  userRequest: t.one(UserRequestForSignature, {
-    fields: [FeeDirector.messageId],
-    references: [UserRequestForSignature.messageId],
-  }),
-}))
-
-// validator initiated going from foreign chain to home chain
-export const SignedForAffirmation = onchainTable(
-  'SignedForAffirmation',
-  (t) => ({
-    // references the block and transaction that the request was made in
-    blockId: t.hex().notNull(),
-    transactionId: t.hex().notNull(),
-    messageHash: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    // should be unique to each bridge across all chains
-    id: t.hex().primaryKey(), // message hash + validator address
-    validatorId: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    messageHashIndex: index().on(t.messageHash),
-  }),
-)
-
-// validator initiated going from home to foreign chain
-export const SignedForUserRequest = onchainTable(
-  'SignedForUserRequest',
-  (t) => ({
-    // references the block and transaction that the request was made in
-    blockId: t.hex().notNull(),
-    transactionId: t.hex().notNull(),
-    messageHash: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    // should be unique to each bridge across all chains
-    id: t.hex().primaryKey(), // message hash + validator address
-    validatorId: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    messageHashIndex: index().on(t.messageHash),
-  }),
-)
-
-export const RelayMessage = onchainTable(
-  'RelayMessage',
-  (t) => ({
-    messageHash: t.hex().primaryKey(),
-    transactionId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    // the address that delivered the tokens
-    deliverer: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    messageHashIndex: index().on(t.messageHash),
-  }),
-)
-
-export const AffirmationComplete = onchainTable(
-  'AffirmationComplete',
-  (t) => ({
-    messageHash: t.hex().primaryKey(),
-    transactionId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
-    // the address that delivered the tokens - in this case, the final signer
-    deliverer: t.hex().notNull(),
-    logIndex: t.smallint().notNull(),
-  }),
-  (t) => ({
-    messageHashIndex: index().on(t.messageHash),
-  }),
-)
-
-export const TransactionRelations = relations(Transaction, (t) => ({
-  block: t.one(Block, {
-    fields: [Transaction.blockId],
-    references: [Block.blockId],
-  }),
-  userRequestForSignature: t.many(UserRequestForSignature),
-  userRequestForAffirmation: t.many(UserRequestForAffirmation),
-  signedForUserRequest: t.many(SignedForUserRequest),
-  signedForAffirmation: t.many(SignedForAffirmation),
-  affirmationComplete: t.many(AffirmationComplete),
-  relayMessage: t.many(RelayMessage),
-}))
-
-export const RequiredSignaturesChangedRelations = relations(
-  RequiredSignaturesChanged,
-  (t) => ({
-    transaction: t.one(Transaction, {
-      fields: [RequiredSignaturesChanged.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    bridge: t.one(BridgeSide, {
-      fields: [RequiredSignaturesChanged.bridgeId],
-      references: [BridgeSide.bridgeId],
-    }),
-  }),
-)
-
-export const UserRequestForAffirmationRelations = relations(
-  UserRequestForAffirmation,
-  (t) => ({
-    block: t.one(Block, {
-      fields: [UserRequestForAffirmation.blockId],
-      references: [Block.blockId],
-    }),
-    transaction: t.one(Transaction, {
-      fields: [UserRequestForAffirmation.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    signatures: t.many(SignedForAffirmation),
-    // should happen automatically at the final signature encouter
-    delivery: t.one(AffirmationComplete, {
-      fields: [UserRequestForAffirmation.messageHash],
-      references: [AffirmationComplete.messageHash],
-    }),
-    bridge: t.one(BridgeSide, {
-      fields: [UserRequestForAffirmation.bridgeId],
-      references: [BridgeSide.bridgeId],
-    }),
-    requiredSignatures: t.one(RequiredSignaturesChanged, {
-      fields: [UserRequestForAffirmation.requiredSignatureId],
-      references: [RequiredSignaturesChanged.orderId],
-    }),
-  }),
-)
-
-export const UserRequestForSignatureRelations = relations(
-  UserRequestForSignature,
-  (t) => ({
-    block: t.one(Block, {
-      fields: [UserRequestForSignature.blockId],
-      references: [Block.blockId],
-    }),
-    transaction: t.one(Transaction, {
-      fields: [UserRequestForSignature.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    signatures: t.many(SignedForUserRequest),
-    delivery: t.one(RelayMessage, {
-      fields: [UserRequestForSignature.messageHash],
-      references: [RelayMessage.messageHash],
-    }),
-    feeDirector: t.one(FeeDirector, {
-      fields: [UserRequestForSignature.messageId],
-      references: [FeeDirector.messageId],
-    }),
-    bridge: t.one(BridgeSide, {
-      fields: [UserRequestForSignature.bridgeId],
-      references: [BridgeSide.bridgeId],
-    }),
-    requiredSignatures: t.one(RequiredSignaturesChanged, {
-      fields: [UserRequestForSignature.requiredSignatureId],
-      references: [RequiredSignaturesChanged.orderId],
-    }),
-  }),
-)
-
-export const SignedForUserRequestsRelations = relations(
-  SignedForUserRequest,
-  (t) => ({
-    transaction: t.one(Transaction, {
-      fields: [SignedForUserRequest.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    userRequest: t.one(UserRequestForSignature, {
-      fields: [SignedForUserRequest.messageHash],
-      references: [UserRequestForSignature.messageHash],
-    }),
-    delivery: t.one(RelayMessage, {
-      fields: [SignedForUserRequest.messageHash],
-      references: [RelayMessage.messageHash],
-    }),
-  }),
-)
-
-export const SignedForAffirmationsRelations = relations(
-  SignedForAffirmation,
-  (t) => ({
-    transaction: t.one(Transaction, {
-      fields: [SignedForAffirmation.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    userRequest: t.one(UserRequestForAffirmation, {
-      fields: [SignedForAffirmation.messageHash],
-      references: [UserRequestForAffirmation.messageHash],
-    }),
-    delivery: t.one(AffirmationComplete, {
-      fields: [SignedForAffirmation.messageHash],
-      references: [AffirmationComplete.messageHash],
-    }),
-  }),
-)
-
-export const RelayMessagesRelations = relations(RelayMessage, (t) => ({
-  transaction: t.one(Transaction, {
-    fields: [RelayMessage.transactionId],
-    references: [Transaction.transactionId],
-  }),
-  userRequest: t.one(UserRequestForSignature, {
-    fields: [RelayMessage.messageHash],
-    references: [UserRequestForSignature.messageHash],
-  }),
-  signature: t.many(SignedForUserRequest),
-}))
-
-export const AffirmationCompleteRelations = relations(
-  AffirmationComplete,
-  (t) => ({
-    transaction: t.one(Transaction, {
-      fields: [AffirmationComplete.transactionId],
-      references: [Transaction.transactionId],
-    }),
-    userRequest: t.one(UserRequestForAffirmation, {
-      fields: [AffirmationComplete.messageHash],
-      references: [UserRequestForAffirmation.messageHash],
-    }),
-    signature: t.many(SignedForAffirmation),
-  }),
-)
-
-export const ValidatorStatusRelations = relations(ValidatorStatus, (t) => ({
-  bridge: t.one(BridgeSide, {
-    fields: [ValidatorStatus.bridgeId],
-    references: [BridgeSide.bridgeId],
-  }),
-  transaction: t.one(Transaction, {
-    fields: [ValidatorStatus.transactionId],
-    references: [Transaction.transactionId],
-  }),
+export default createSchema((t) => ({
+  Block: t.createTable(
+    {
+      id: t.hex(),
+      chainId: t.bigint(),
+      hash: t.hex(),
+      number: t.bigint(),
+      timestamp: t.bigint(),
+      baseFeePerGas: t.bigint(),
+      transactions: t.many('Transaction.blockId'),
+      userRequestForSignature: t.many('UserRequestForSignature.blockId'),
+      userRequestForAffirmation: t.many('UserRequestForAffirmation.blockId'),
+      signedForUserRequest: t.many('SignedForUserRequest.blockId'),
+      signedForAffirmation: t.many('SignedForAffirmation.blockId'),
+      affirmationComplete: t.many('AffirmationComplete.blockId'),
+      relayMessage: t.many('RelayMessage.blockId'),
+    },
+    {
+      hash: t.index('hash'),
+      number: t.index('number'),
+    },
+  ),
+  Transaction: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      hash: t.hex(),
+      index: t.bigint(),
+      from: t.hex(),
+      to: t.hex(),
+      value: t.bigint(),
+      userRequestForSignature: t.many('UserRequestForSignature.transactionId'),
+      userRequestForAffirmation: t.many(
+        'UserRequestForAffirmation.transactionId',
+      ),
+      signedForUserRequest: t.many('SignedForUserRequest.transactionId'),
+      signedForAffirmation: t.many('SignedForAffirmation.transactionId'),
+      affirmationComplete: t.many('AffirmationComplete.transactionId'),
+      relayMessage: t.many('RelayMessage.transactionId'),
+    },
+    {
+      blockId: t.index('blockId'),
+      hash: t.index('hash'),
+    },
+  ),
+  LatestValidatorStatusUpdate: t.createTable(
+    {
+      id: t.hex(), // bridge id + address
+      orderId: t.hex().references('ValidatorStatusUpdate.id'),
+      order: t.one('orderId'),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+    },
+    {
+      orderId: t.index('orderId'),
+      bridgeId: t.index('bridgeId'),
+    },
+  ),
+  ValidatorStatusUpdate: t.createTable(
+    {
+      id: t.hex(), // orderId
+      validatorId: t.hex(),
+      address: t.hex(),
+      active: t.boolean(),
+      logIndex: t.int(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+    },
+  ),
+  Direction: t.createEnum(['home', 'foreign']),
+  Provider: t.createEnum(['pulsechain', 'tokensex']),
+  BridgeSide: t.createTable(
+    {
+      id: t.hex(),
+      chainId: t.bigint(),
+      address: t.hex(),
+      provider: t.enum('Provider'),
+      side: t.enum('Direction'),
+    },
+    {
+      chainId: t.index('chainId'),
+    },
+  ),
+  RequiredSignaturesChanged: t.createTable(
+    {
+      id: t.hex(),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+      value: t.bigint(),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      logIndex: t.int(),
+    },
+    {
+      bridgeId: t.index('bridgeId'),
+      transactionId: t.index('transactionId'),
+    },
+  ),
+  LatestRequiredSignaturesChanged: t.createTable(
+    {
+      id: t.hex(), // bridgeId - since it is universal for each side of each bridge pair
+      value: t.bigint(),
+      orderId: t.hex().references('RequiredSignaturesChanged.id'),
+    },
+    {
+      orderId: t.index('orderId'),
+    },
+  ),
+  UserRequestForAffirmation: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      transactionId: t.hex().references('Transaction.id'),
+      messageHash: t.hex(),
+      from: t.hex(),
+      to: t.hex(),
+      amount: t.bigint(),
+      encodedData: t.hex(),
+      logIndex: t.int(),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      originationChainId: t.bigint(),
+      destinationChainId: t.bigint(),
+      requiredSignatureId: t.hex().references('RequiredSignaturesChanged.id'),
+      confirmedSignatures: t.bigint(),
+      finishedSigning: t.boolean(),
+      signatures: t.many('SignedForAffirmation.userRequestId'),
+      orderId: t.hex(),
+    },
+    {
+      blockId: t.index('blockId'),
+      transactionId: t.index('transactionId'),
+      bridgeId: t.index('bridgeId'),
+      requiredSignatureId: t.index('requiredSignatureId'),
+      finishedSigning: t.index('finishedSigning'),
+      orderId: t.index('orderId'),
+    },
+  ),
+  FeeDirector: t.createTable(
+    {
+      id: t.hex(),
+      userRequestId: t.hex().references('UserRequestForSignature.id'),
+      userRequest: t.one('userRequestId'),
+      recipient: t.hex(),
+      settings: t.bigint(),
+      limit: t.bigint(),
+      multiplier: t.bigint(),
+      feeType: t.string(),
+      unwrapped: t.boolean(),
+      excludePriority: t.boolean(),
+    },
+    {
+      userRequestId: t.index('userRequestId'),
+    },
+  ),
+  SignedForAffirmation: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      messageHash: t.hex(),
+      orderId: t.hex(),
+      validatorId: t.hex(),
+      logIndex: t.int(),
+      userRequestId: t.hex().references('UserRequestForAffirmation.id'),
+      userRequest: t.one('userRequestId'),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+      deliveryId: t.hex().references('AffirmationComplete.id'),
+      delivery: t.one('deliveryId'),
+    },
+    {
+      blockId: t.index('blockId'),
+      transactionId: t.index('transactionId'),
+      messageHash: t.index('messageHash'),
+      userRequestId: t.index('userRequestId'),
+    },
+  ),
+  UserRequestForSignature: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      orderId: t.hex(),
+      messageHash: t.hex(),
+      from: t.hex(),
+      to: t.hex(),
+      amount: t.bigint(),
+      encodedData: t.hex(),
+      logIndex: t.int(),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+      originationChainId: t.bigint(),
+      destinationChainId: t.bigint(),
+      requiredSignatureId: t.hex().references('RequiredSignaturesChanged.id'),
+      requiredSignature: t.one('requiredSignatureId'),
+      confirmedSignatures: t.bigint(),
+      finishedSigning: t.boolean(),
+      signatures: t.many('SignedForUserRequest.userRequestId'),
+      feeDirectorId: t.hex().references('FeeDirector.id').optional(),
+      feeDirector: t.one('feeDirectorId'),
+    },
+    {
+      blockId: t.index('blockId'),
+      transactionId: t.index('transactionId'),
+      bridgeId: t.index('bridgeId'),
+      requiredSignatureId: t.index('requiredSignatureId'),
+      finishedSigning: t.index('finishedSigning'),
+      feeDirectorId: t.index('feeDirectorId'),
+    },
+  ),
+  SignedForUserRequest: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      messageHash: t.hex(),
+      orderId: t.hex(),
+      validatorId: t.hex(),
+      logIndex: t.int(),
+      userRequestId: t.hex().references('UserRequestForSignature.id'),
+      userRequest: t.one('userRequestId'),
+      deliveryId: t.hex().references('RelayMessage.id'),
+      delivery: t.one('deliveryId'),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+    },
+    {
+      blockId: t.index('blockId'),
+      transactionId: t.index('transactionId'),
+      messageHash: t.index('messageHash'),
+      userRequestId: t.index('userRequestId'),
+    },
+  ),
+  ReverseMessageHashBinding: t.createTable(
+    {
+      id: t.hex(), // messageHash
+      userRequestId: t.hex().references('UserRequestForSignature.id'),
+      userRequest: t.one('userRequestId'),
+      bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
+    },
+    {
+      userRequestId: t.index('userRequestId'),
+    },
+  ),
+  RelayMessage: t.createTable(
+    {
+      id: t.hex(),
+      messageHash: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      orderId: t.hex(),
+      deliverer: t.hex(),
+      logIndex: t.int(),
+      userRequestId: t.hex().references('UserRequestForSignature.id'),
+      userRequest: t.one('userRequestId'),
+      signatures: t.many('SignedForUserRequest.deliveryId'),
+    },
+    {
+      messageHash: t.index('messageHash'),
+      transactionId: t.index('transactionId'),
+    },
+  ),
+  AffirmationComplete: t.createTable(
+    {
+      id: t.hex(),
+      blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
+      messageHash: t.hex(),
+      transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
+      orderId: t.hex(),
+      deliverer: t.hex(),
+      logIndex: t.int(),
+      userRequestId: t.hex().references('UserRequestForAffirmation.id'),
+      userRequest: t.one('userRequestId'),
+      signatures: t.many('SignedForAffirmation.deliveryId'),
+    },
+    {
+      messageHash: t.index('messageHash'),
+      transactionId: t.index('transactionId'),
+    },
+  ),
 }))

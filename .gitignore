@@ -17,8 +17,10 @@ yarn-error.log*
 /generated/
 /.ponder/
 
-postgres-data
+postgres-data*
 abis/artifacts
 
 src/v06
 src/v07
+
+ponder.v*
