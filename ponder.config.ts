@@ -51,36 +51,36 @@ export default createConfig({
     },
   },
   contracts: {
-    TokenOmnibridge: {
-      abi: TokenOmnibridgeAbi,
-      network: {
-        ethereum: {
-          address: [
-            // add in all token bridges ever encountered
-          ],
-        },
-        pulsechain: {
-          address: [
-            //
-          ],
-        },
-        pulsechainV4: {
-          address: [
-            //
-          ],
-        },
-        sepolia: {
-          address: [
-            //
-          ],
-        },
-        // bsc: {
-        //   address: [
-        //     //
-        //   ],
-        // },
-      },
-    },
+    // TokenOmnibridge: {
+    //   abi: TokenOmnibridgeAbi,
+    //   network: {
+    //     ethereum: {
+    //       address: [
+    //         // add in all token bridges ever encountered
+    //       ],
+    //     },
+    //     pulsechain: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     pulsechainV4: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     sepolia: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     // bsc: {
+    //     //   address: [
+    //     //     //
+    //     //   ],
+    //     // },
+    //   },
+    // },
     ValidatorContract: {
       abi: BaseBridgeValidatorsAbi,
       network: {
