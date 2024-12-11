@@ -288,6 +288,7 @@ ponder.on("HomeAMB:UserRequestForSignature", async ({ event, context }) => {
     event.transaction.from,
     event.args.encodedData
   );
+  console.log(event.args.messageId);
   const targetOrderId = orderId(context, event);
   await Promise.all([
     upsertBlock(context, event.block),
