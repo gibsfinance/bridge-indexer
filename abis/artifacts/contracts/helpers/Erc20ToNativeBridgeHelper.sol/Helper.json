@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Helper",
+  "sourceName": "contracts/helpers/Erc20ToNativeBridgeHelper.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a72305820f328a57451bd8496dfd475d0e1889b13cbbb19ea8010f0745c8136d648d03e040029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a72305820f328a57451bd8496dfd475d0e1889b13cbbb19ea8010f0745c8136d648d03e040029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

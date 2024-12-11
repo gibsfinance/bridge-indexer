@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Claimable",
+  "sourceName": "contracts/routers/WETHOmnibridgeRouterV2/Claimable.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220b2b33b0ded87605bbb26a1104b677b4cf6d5da88a5e5c188ef741f5ca61d36bc64736f6c63430008180033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220b2b33b0ded87605bbb26a1104b677b4cf6d5da88a5e5c188ef741f5ca61d36bc64736f6c63430008180033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

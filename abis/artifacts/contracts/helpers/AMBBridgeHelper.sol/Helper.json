@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Helper",
+  "sourceName": "contracts/helpers/AMBBridgeHelper.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a72305820a5a682aae533d7e8bb5d31c2c425d1e685e8cc01b1b113e0e3ba912780e2f2080029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a72305820a5a682aae533d7e8bb5d31c2c425d1e685e8cc01b1b113e0e3ba912780e2f2080029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

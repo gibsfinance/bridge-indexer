@@ -1,62 +1,208 @@
 import { createConfig } from "ponder";
-import { http, createPublicClient } from "viem";
+import HomeAMBAbi from "./abis/HomeAMB";
+import ForeignAMBAbi from "./abis/ForeignAMB";
+import { TokenOmnibridgeAbi } from "./abis/TokenOmnibridge";
+import BaseBridgeValidatorsAbi from "./abis/BaseBridgeValidators";
+import {
+  chains,
+  pathways,
+  Providers,
+  getValidatorAddress,
+  toTransport,
+} from "./src/utils";
 
-import { weth9Abi } from "./abis/weth9Abi";
-
-const latestBlockMainnet = await createPublicClient({
-  transport: http(process.env.PONDER_RPC_URL_1),
-}).getBlock();
-const latestBlockBase = await createPublicClient({
-  transport: http(process.env.PONDER_RPC_URL_8453),
-}).getBlock();
-const latestBlockOptimism = await createPublicClient({
-  transport: http(process.env.PONDER_RPC_URL_10),
-}).getBlock();
-const latestBlockPolygon = await createPublicClient({
-  transport: http(process.env.PONDER_RPC_URL_137),
-}).getBlock();
+Error.stackTraceLimit = Infinity;
 
 export default createConfig({
+  database: {
+    kind: "postgres",
+    connectionString: process.env.DATABASE_URL,
+  },
   networks: {
-    mainnet: {
-      chainId: 1,
-      transport: http(process.env.PONDER_RPC_URL_1),
-      pollingInterval: 15_000,
+    ethereum: {
+      chainId: chains.ethereum,
+      transport: toTransport(chains.ethereum),
+      pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
-    base: {
-      chainId: 8453,
-      transport: http(process.env.PONDER_RPC_URL_8453),
-      pollingInterval: 15_000,
+    // bsc: {
+    //   chainId: chains.bsc,
+    //   transport: toTransport(chains.bsc),
+    //   pollingInterval: 5_000,
+    //   maxRequestsPerSecond: 1_000,
+    // },
+    pulsechain: {
+      chainId: chains.pulsechain,
+      transport: toTransport(chains.pulsechain),
+      pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
-    optimism: {
-      chainId: 10,
-      transport: http(process.env.PONDER_RPC_URL_10),
-      pollingInterval: 15_000,
+    pulsechainV4: {
+      chainId: chains.pulsechainV4,
+      transport: toTransport(chains.pulsechainV4),
+      pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
-    polygon: {
-      chainId: 137,
-      transport: http(process.env.PONDER_RPC_URL_137),
-      pollingInterval: 15_000,
+    sepolia: {
+      chainId: chains.sepolia,
+      transport: toTransport(chains.sepolia),
+      pollingInterval: 5_000,
+      maxRequestsPerSecond: 1_000,
     },
   },
   contracts: {
-    weth9: {
-      abi: weth9Abi,
-      address: "0x4200000000000000000000000000000000000006",
+    // TokenOmnibridge: {
+    //   abi: TokenOmnibridgeAbi,
+    //   network: {
+    //     ethereum: {
+    //       address: [
+    //         // add in all token bridges ever encountered
+    //       ],
+    //     },
+    //     pulsechain: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     pulsechainV4: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     sepolia: {
+    //       address: [
+    //         //
+    //       ],
+    //     },
+    //     // bsc: {
+    //     //   address: [
+    //     //     //
+    //     //   ],
+    //     // },
+    //   },
+    // },
+    ValidatorContract: {
+      abi: BaseBridgeValidatorsAbi,
       network: {
-        mainnet: {
-          address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-          startBlock: Number(latestBlockMainnet.number),
+        pulsechain: {
+          address: [
+            await getValidatorAddress(
+              Providers.PULSECHAIN,
+              chains.pulsechain,
+              chains.ethereum,
+              "home"
+            ),
+            // await getValidatorAddress(
+            //   Providers.TOKENSEX,
+            //   chains.pulsechain,
+            //   chains.bsc,
+            //   'home',
+            // ),
+          ],
+          startBlock: 17_268_297,
         },
-        base: {
-          startBlock: Number(latestBlockBase.number),
+        ethereum: {
+          address: [
+            await getValidatorAddress(
+              Providers.PULSECHAIN,
+              chains.pulsechain,
+              chains.ethereum,
+              "foreign"
+            ),
+          ],
+          startBlock: 17_264_119,
         },
-        optimism: {
-          startBlock: Number(latestBlockOptimism.number),
+        pulsechainV4: {
+          address: [
+            await getValidatorAddress(
+              Providers.PULSECHAIN,
+              chains.pulsechainV4,
+              chains.sepolia,
+              "home"
+            ),
+          ],
+          startBlock: 16_564_223,
         },
-        polygon: {
-          address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
-          startBlock: Number(latestBlockPolygon.number),
+        sepolia: {
+          address: [
+            await getValidatorAddress(
+              Providers.PULSECHAIN,
+              chains.pulsechainV4,
+              chains.sepolia,
+              "foreign"
+            ),
+          ],
+          startBlock: 3_331_893,
+        },
+        // bsc: {
+        //   address: [
+        //     await getValidatorAddress(
+        //       Providers.TOKENSEX,
+        //       chains.pulsechain,
+        //       chains.bsc,
+        //       'foreign',
+        //     ),
+        //   ],
+        //   startBlock: 28_987_322,
+        // },
+      },
+    },
+    HomeAMB: {
+      abi: HomeAMBAbi,
+      filter: {
+        event: [
+          "UserRequestForSignature", // home -> foreign start
+          "SignedForAffirmation", // foreign -> home signed
+          "SignedForUserRequest", // home -> foreign signed
+          "AffirmationCompleted", // foreign -> home complete
+        ],
+      },
+      network: {
+        pulsechain: {
+          address: [
+            pathways.pulsechain[chains.pulsechain]![chains.ethereum]!.home,
+            // pathways.tokensex[chains.pulsechain]![chains.bsc]!.home,
+          ],
+          // bsc is deployed at 17_494_240
+          // startBlock: 20427991,
+          startBlock: 17_268_302,
+        },
+        pulsechainV4: {
+          address: [
+            pathways.pulsechain[chains.pulsechainV4]![chains.sepolia]!.home,
+          ],
+          // startBlock: 19836620,
+          startBlock: 16_564_237,
+        },
+      },
+    },
+    ForeignAMB: {
+      filter: {
+        event: [
+          "UserRequestForAffirmation", // foreign -> home start
+          "RelayedMessage", // home -> foreign complete
+        ],
+      },
+      abi: ForeignAMBAbi,
+      network: {
+        ethereum: {
+          address: [
+            pathways.pulsechain[chains.pulsechain]![chains.ethereum]!.foreign,
+          ],
+          // startBlock: 19920476,
+          startBlock: 17_264_119,
+        },
+        // bsc: {
+        //   address: [pathways.tokensex[chains.pulsechain]![chains.bsc]!.foreign],
+        //   // startBlock: 39182556,
+        //   startBlock: 28_987_322,
+        // },
+        sepolia: {
+          address: [
+            pathways.pulsechain[chains.pulsechainV4]![chains.sepolia]!.foreign,
+          ],
+          // startBlock: 7019369,
+          startBlock: 3_331_901,
         },
       },
     },

@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ValidatorStorage",
+  "sourceName": "contracts/upgradeable_contracts/ValidatorStorage.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a723058204bc3aed90c8be4ec857caaed37eb82cd881cfa519284a33bc5ff7fdc3c9fe7270029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a723058204bc3aed90c8be4ec857caaed37eb82cd881cfa519284a33bc5ff7fdc3c9fe7270029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

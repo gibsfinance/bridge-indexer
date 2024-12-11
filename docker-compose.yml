@@ -1,0 +1,60 @@
+services:
+  postgres-bridge-indexer-v08:
+    container_name: postgres-bridge-indexer-v08
+    image: postgres:16
+    shm_size: 16g
+    command: postgres -c 'max_connections=500' -c work_mem=256MB -c maintenance_work_mem=256MB -c max_wal_size=1GB
+    ports:
+      - 4124:5432
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - bridge-indexer-v08
+    environment:
+      - POSTGRES_DB=bridge-indexer-v08
+      - POSTGRES_USER=bridge-indexer-v08
+      - POSTGRES_PASSWORD=password
+
+  bridge-indexer-v08:
+    container_name: bridge-indexer-v08
+    image: bridge-indexer-v08
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - bridge-indexer-v08
+    command: bun run start
+    ports:
+      - 42079:42069
+    depends_on:
+      - postgres-bridge-indexer-v08
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+    volumes:
+      - ./abis:/app/abis
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+      - ./bun.lockb:/app/bun.lockb
+      - ./ponder.config.ts:/app/ponder.config.ts
+      - ./ponder.schema.ts:/app/ponder.schema.ts
+      - ./ponder-env.d.ts:/app/ponder-env.d.ts
+    environment:
+      - NODE_OPTIONS="--max-old-space-size=8192"
+      - DATABASE_URL=postgresql://bridge-indexer-v08:password@postgres-bridge-indexer-v08:5432/bridge-indexer-v08
+      - PONDER_RPC_URL_943=https://rpc.v4.testnet.pulsechain.com
+      - PONDER_RPC_URL_369=https://rpc.pulsechain.com
+      - PONDER_RPC_URL_1=${PONDER_RPC_URL_1}
+      - PONDER_RPC_URL_56=${PONDER_RPC_URL_56}
+      - PONDER_RPC_URL_11155111=${PONDER_RPC_URL_11155111}
+      - DATABASE_SCHEMA=bridge_indexer_v08
+
+networks:
+  bridge-indexer-v08:
+    driver: bridge
+
+volumes:
+  bridge-indexer-v08:
+    external: true

@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Claimable",
+  "sourceName": "contracts/upgradeable_contracts/Claimable.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a7230582044fe16019e029cdfbc63ab2b38319df6c904123fd310cd4af8e6bdd8a00d19a50029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a7230582044fe16019e029cdfbc63ab2b38319df6c904123fd310cd4af8e6bdd8a00d19a50029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

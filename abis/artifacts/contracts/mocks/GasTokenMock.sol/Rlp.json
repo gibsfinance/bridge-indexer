@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Rlp",
+  "sourceName": "contracts/mocks/GasTokenMock.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a723058201c9a3cbe4c6fd733bff243a72d58d80659c2d805d09c039cd931a81d0560a4990029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a723058201c9a3cbe4c6fd733bff243a72d58d80659c2d805d09c039cd931a81d0560a4990029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

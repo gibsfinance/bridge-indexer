@@ -1,0 +1,22 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Sacrifice",
+  "sourceName": "contracts/upgradeable_contracts/Sacrifice.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "name": "_recipient",
+          "type": "address"
+        }
+      ],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "constructor"
+    }
+  ],
+  "bytecode": "0x608060405260405160208060218339810160405251600160a060020a038116ff00",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a723058208c8637ede2bf06eb1237ea42a8644aeeaadc5f4558be821875c862aeaf6c96e20029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
