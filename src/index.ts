@@ -190,40 +190,40 @@ const getLatestRequiredSignatures = async (
   const latest = await context.db.find(LatestRequiredSignaturesChanged, {
     bridgeId,
   })
-  if (!latest) {
-    if (context.network.chainId === 56) {
-      console.log(context.network.chainId, event.transaction.hash, event)
-      const eventOrderId = orderId(context, event)
-      const [current] = await Promise.all([
-        context.db
-          .insert(RequiredSignaturesChanged)
-          .values({
-            orderId: eventOrderId,
-            bridgeId,
-            value: 3n,
-            transactionId: ids.transaction(context, event.transaction.hash),
-            logIndex: event.log.logIndex,
-          })
-          .onConflictDoUpdate((row) => ({
-            value: row.value,
-          })),
-        context.db
-          .insert(LatestRequiredSignaturesChanged)
-          .values({
-            bridgeId,
-            orderId: eventOrderId,
-          })
-          .onConflictDoUpdate(() => ({
-            orderId: eventOrderId,
-          })),
-        upsertTransaction(context, event.transaction),
-        upsertBlock(context, event.block),
-      ])
-      return current
-    } else {
-      throw new Error('no latest required signatures')
-    }
-  }
+  // if (!latest) {
+  //   if (context.network.chainId === 56) {
+  //     console.log(context.network.chainId, event.transaction.hash, event)
+  //     const eventOrderId = orderId(context, event)
+  //     const [current] = await Promise.all([
+  //       context.db
+  //         .insert(RequiredSignaturesChanged)
+  //         .values({
+  //           orderId: eventOrderId,
+  //           bridgeId,
+  //           value: 3n,
+  //           transactionId: ids.transaction(context, event.transaction.hash),
+  //           logIndex: event.log.logIndex,
+  //         })
+  //         .onConflictDoUpdate((row) => ({
+  //           value: row.value,
+  //         })),
+  //       context.db
+  //         .insert(LatestRequiredSignaturesChanged)
+  //         .values({
+  //           bridgeId,
+  //           orderId: eventOrderId,
+  //         })
+  //         .onConflictDoUpdate(() => ({
+  //           orderId: eventOrderId,
+  //         })),
+  //       upsertTransaction(context, event.transaction),
+  //       upsertBlock(context, event.block),
+  //     ])
+  //     return current
+  //   } else {
+  //     throw new Error('no latest required signatures')
+  //   }
+  // }
   const requiredSignatures = await context.db.find(RequiredSignaturesChanged, {
     orderId: latest!.orderId!,
   })
