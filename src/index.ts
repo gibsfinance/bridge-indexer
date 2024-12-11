@@ -247,6 +247,7 @@ ponder.on(
     const blockId = ids.block(context, event.block.hash);
     const transactionId = ids.transaction(context, event.transaction.hash);
     const targetOrderId = orderId(context, event);
+    console.log(event.args.messageId);
     await Promise.all([
       upsertBlock(context, event.block),
       upsertTransaction(context, event.block, event.transaction),
@@ -340,6 +341,7 @@ ponder.on("HomeAMB:SignedForAffirmation", async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer);
   const blockId = ids.block(context, event.block.hash);
   const transactionId = ids.transaction(context, event.transaction.hash);
+  console.log(context.network.chainId, event.args.messageHash);
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.block, event.transaction),
@@ -378,6 +380,7 @@ ponder.on("HomeAMB:SignedForUserRequest", async ({ event, context }) => {
   const validatorId = ids.validator(bridgeId, event.args.signer);
   const blockId = ids.block(context, event.block.hash);
   const transactionId = ids.transaction(context, event.transaction.hash);
+  console.log(context.network.chainId, event.args.messageHash);
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.block, event.transaction),
