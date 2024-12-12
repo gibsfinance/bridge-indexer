@@ -30,7 +30,7 @@ export type ChainId = (typeof chainIds)[number]
 
 export const Providers = {
   PULSECHAIN: 'pulsechain',
-  // TOKENSEX: 'tokensex',
+  TOKENSEX: 'tokensex',
 } as const
 
 export type Provider = (typeof Providers)[keyof typeof Providers]
@@ -62,21 +62,33 @@ export const pathways = {
       },
     },
   },
-  // [Providers.TOKENSEX]: {
-  //   [chains.pulsechain]: {
-  //     [chains.bsc]: {
-  //       home: '0xa3177000d645c599e45f946240f9c2f46d26718b',
-  //       foreign: '0x8C0Db248E87F53e53f7D19A8Bd1CFAB16f5B69E7',
-  //     },
-  //   },
-  // },
+  [Providers.TOKENSEX]: {
+    [chains.pulsechain]: {
+      [chains.bsc]: {
+        home: '0xa3177000d645c599e45f946240f9c2f46d26718b',
+        foreign: '0x8C0Db248E87F53e53f7D19A8Bd1CFAB16f5B69E7',
+      },
+    },
+  },
 } as Pathway
 
-// export const providers = ['pulsechain', 'tokensex'] as const
-
-// export type Provider = (typeof providers)[number]
-
 export type Side = 'home' | 'foreign'
+
+export const staticRequiredSignatures = (chainId: ChainId) => {
+  if (chainId === chains.pulsechain) {
+    return 5n
+  }
+  if (chainId === chains.pulsechainV4) {
+    return 3n
+  }
+  if (chainId === chains.ethereum) {
+    return 5n
+  }
+  if (chainId === chains.sepolia) {
+    return 3n
+  }
+  throw new Error('Unknown chain id')
+}
 
 type MinimalKey = `${ChainId}-${Hex}`
 

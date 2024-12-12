@@ -15,7 +15,7 @@
     "@types/lodash": "^4.17.13",
     "hono": "^4.5.0",
     "lodash": "^4.17.21",
-    "viem": "^2.21.3"
+    "viem": "^2.21.54"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

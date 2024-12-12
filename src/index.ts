@@ -18,17 +18,22 @@ import {
   Providers,
   ChainId,
   pathways,
+  staticRequiredSignatures,
 } from './utils'
 import _ from 'lodash'
 import * as PonderCore from '@ponder/core'
 import { Provider } from './utils'
-import { mainnet, sepolia } from 'viem/chains'
+import { mainnet, pulsechain, pulsechainV4, sepolia } from 'viem/chains'
 import ForeignAMB from '../abis/ForeignAMB'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
   const blockId = ids.block(context, block.hash)
-  if (inMemoryCache.has(`block-${context.network.chainId}`)) {
-    return inMemoryCache.get(`block-${context.network.chainId}`)
+  // should only be looking at 1 block at a time, so this should save us some back and forth
+  const memoryBlock = inMemoryCache.get(`block-${context.network.chainId}`)
+  if (memoryBlock) {
+    if (memoryBlock.blockId === blockId) {
+      return memoryBlock
+    }
   }
   const blockInfo = await context.db.Block.findUnique({
     id: blockId,
@@ -56,6 +61,12 @@ const upsertTransaction = async (
   transaction: PonderCore.Transaction,
 ) => {
   const transactionId = ids.transaction(context, transaction.hash)
+  const memoryTransaction = inMemoryCache.get(`transaction-${transactionId}`)
+  if (memoryTransaction) {
+    if (memoryTransaction.transactionId === transactionId) {
+      return memoryTransaction
+    }
+  }
   return await context.db.Transaction.upsert({
     id: transactionId,
     create: {
@@ -72,8 +83,9 @@ const upsertTransaction = async (
 
 const upsertBridge = async (context: Context, address: Hex) => {
   const bridgeId = ids.bridge(context, address)
-  if (inMemoryCache.has(`bridge-${bridgeId}`)) {
-    return inMemoryCache.get(`bridge-${bridgeId}`)
+  let bridgeSidecached = inMemoryCache.get(`bridge-${bridgeId}`)
+  if (bridgeSidecached) {
+    return bridgeSidecached
   }
   const bridgeSide = await context.db.BridgeSide.findUnique({
     id: bridgeId,
@@ -234,14 +246,18 @@ type RequiredSigs = {
   value: bigint
 }
 
-const getLatestRequiredSignatures = async (context: Context, bridgeId: Hex) => {
+const getLatestRequiredSignatures = async (
+  context: Context,
+  bridgeId: Hex,
+  event: any,
+) => {
   const req = inMemoryCache.get(
     `latest-required-sigs-${bridgeId}`,
   ) as RequiredSigs
   if (req) {
     return req
   }
-  const latest = await context.db.LatestRequiredSignaturesChanged.findUnique({
+  let latest = await context.db.LatestRequiredSignaturesChanged.findUnique({
     id: bridgeId,
   })
   if (!latest) {
@@ -250,6 +266,27 @@ const getLatestRequiredSignatures = async (context: Context, bridgeId: Hex) => {
       bridgeId,
       context.network.chainId,
     )
+    const currentEventId = orderId(context, event)
+    const value = staticRequiredSignatures(context.network.chainId)
+    const [l] = await Promise.all([
+      context.db.LatestRequiredSignaturesChanged.create({
+        id: bridgeId,
+        data: {
+          orderId: currentEventId,
+          value,
+        },
+      }),
+      context.db.RequiredSignaturesChanged.create({
+        id: currentEventId,
+        data: {
+          bridgeId,
+          value,
+          transactionId: event.transaction.hash,
+          logIndex: event.log.logIndex,
+        },
+      }),
+    ])
+    latest = l
   }
   const requiredSignatures =
     await context.db.RequiredSignaturesChanged.findUnique({
@@ -342,6 +379,28 @@ const foreignPairing = new Map<Provider, Map<ChainId, Chain>>([
   ],
 ])
 
+const homePairing = new Map<Provider, Map<ChainId, Chain>>([
+  [
+    Providers.PULSECHAIN,
+    new Map([
+      [369, pulsechain as Chain],
+      [943, pulsechainV4 as Chain],
+    ]),
+  ],
+])
+
+type URF<T> = {
+  name: T
+  args: {
+    messageId: Hex
+    encodedData: Hex
+  }
+  log: Prettify<PonderCore.Log>
+  block: Prettify<PonderCore.Block>
+  transaction: Prettify<PonderCore.Transaction>
+  transactionReceipt?: never | undefined
+}
+
 const loadFromChain = async (
   context: Context,
   event: SignatureEvent,
@@ -351,20 +410,14 @@ const loadFromChain = async (
   let i = 10
   if (sameChain) {
     // get user request for signature
-    const client = context.client
-    let matching:
-      | {
-          name: 'UserRequestForSignature'
-          args: {
-            messageId: Hex
-            encodedData: Hex
-          }
-          log: Prettify<PonderCore.Log>
-          block: Prettify<PonderCore.Block>
-          transaction: Prettify<PonderCore.Transaction>
-          transactionReceipt?: never | undefined
-        }
-      | undefined = undefined
+    const homeChain = homePairing
+      .get(Providers.PULSECHAIN)!
+      .get(context.network.chainId)!
+    const client = createPublicClient({
+      chain: homeChain,
+      transport: toTransport(homeChain.id as ChainId),
+    })
+    let matching: URF<'UserRequestForSignature'> | undefined = undefined
     const contract = getContract({
       address: event.log.address,
       abi: context.contracts.HomeAMB.abi,
@@ -437,6 +490,12 @@ const loadFromChain = async (
             s: transaction.s,
           } as Prettify<PonderCore.Transaction>,
         }
+        console.log(
+          '%s matching urfs %s@%o',
+          orderId(context, matching),
+          matching.transaction.hash,
+          context.network.chainId,
+        )
         await handleURFS({ event: matching, context: context as any })
         return {
           id: event.args.messageHash,
@@ -468,24 +527,12 @@ const loadFromChain = async (
       blockTag: 'latest',
     })
 
-    let matching:
-      | {
-          name: 'UserRequestForAffirmation'
-          args: {
-            messageId: Hex
-            encodedData: Hex
-          }
-          log: Prettify<PonderCore.Log>
-          block: Prettify<PonderCore.Block>
-          transaction: Prettify<PonderCore.Transaction>
-          transactionReceipt?: never | undefined
-        }
-      | undefined = undefined
+    let matching: URF<'UserRequestForAffirmation'> | undefined = undefined
     let toBlock = latestBlock.number
     do {
       i--
       const fromBlock = toBlock - 999n
-    console.log('checking urfs from %o to %o', fromBlock, toBlock)
+      console.log('checking urfs from %o to %o', fromBlock, toBlock)
       const urfa = await contract.getEvents.UserRequestForAffirmation(
         {},
         {
@@ -515,6 +562,12 @@ const loadFromChain = async (
             hash: match.transactionHash,
           })) as Prettify<PonderCore.Transaction>,
         }
+        console.log(
+          '%s matching urfa %s@%o',
+          orderId(context, matching),
+          matching.transaction.hash,
+          context.network.chainId,
+        )
         await handleURFA({
           event: matching,
           context:
@@ -561,6 +614,7 @@ const handleURFA: URFAHandler = async ({ event, context }) => {
     `outstanding-message-id-${parsed.messageHash}`,
     event.args.messageId,
   )
+  // console.log(targetOrderId, parsed.messageHash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -572,27 +626,28 @@ const handleURFA: URFAHandler = async ({ event, context }) => {
         userRequestId: event.args.messageId,
       },
     }),
-    getLatestRequiredSignatures(context, bridgeId).then((requiredSignatures) =>
-      context.db.UserRequestForAffirmation.create({
-        id: event.args.messageId,
-        data: {
-          bridgeId,
-          blockId,
-          transactionId,
-          requiredSignatureId: requiredSignatures.id,
-          messageHash: parsed.messageHash,
-          from: parsed.from,
-          to: parsed.to,
-          amount: parsed.nestedData.amount,
-          encodedData: event.args.encodedData,
-          logIndex: event.log.logIndex,
-          originationChainId: parsed.originationChainId,
-          destinationChainId: parsed.destinationChainId,
-          orderId: targetOrderId,
-          confirmedSignatures: 0n,
-          finishedSigning: false,
-        },
-      }),
+    getLatestRequiredSignatures(context, bridgeId, event).then(
+      (requiredSignatures) =>
+        context.db.UserRequestForAffirmation.create({
+          id: event.args.messageId,
+          data: {
+            bridgeId,
+            blockId,
+            transactionId,
+            requiredSignatureId: requiredSignatures.id,
+            messageHash: parsed.messageHash,
+            from: parsed.from,
+            to: parsed.to,
+            amount: parsed.nestedData.amount,
+            encodedData: event.args.encodedData,
+            logIndex: event.log.logIndex,
+            originationChainId: parsed.originationChainId,
+            destinationChainId: parsed.destinationChainId,
+            orderId: targetOrderId,
+            confirmedSignatures: 0n,
+            finishedSigning: false,
+          },
+        }),
     ),
   ])
 }
@@ -613,6 +668,7 @@ const handleURFS: URFSHandler = async ({ event, context }) => {
     `outstanding-message-id-${parsed.messageHash}`,
     event.args.messageId,
   )
+  // console.log(targetOrderId, parsed.messageHash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -639,28 +695,31 @@ const handleURFS: URFSHandler = async ({ event, context }) => {
           },
         })
       : null,
-    getLatestRequiredSignatures(context, bridgeId).then((requiredSignatures) =>
-      context.db.UserRequestForSignature.create({
-        id: event.args.messageId,
-        data: {
-          feeDirectorId: parsed.feeDirector ? event.args.messageId : undefined,
-          bridgeId,
-          blockId,
-          transactionId,
-          requiredSignatureId: requiredSignatures.id,
-          amount: parsed.nestedData.amount,
-          from: parsed.from,
-          encodedData: event.args.encodedData,
-          messageHash: parsed.messageHash,
-          to: parsed.to,
-          logIndex: event.log.logIndex,
-          originationChainId: parsed.originationChainId,
-          destinationChainId: parsed.destinationChainId,
-          orderId: targetOrderId,
-          confirmedSignatures: 0n,
-          finishedSigning: false,
-        },
-      }),
+    getLatestRequiredSignatures(context, bridgeId, event).then(
+      (requiredSignatures) =>
+        context.db.UserRequestForSignature.create({
+          id: event.args.messageId,
+          data: {
+            feeDirectorId: parsed.feeDirector
+              ? event.args.messageId
+              : undefined,
+            bridgeId,
+            blockId,
+            transactionId,
+            requiredSignatureId: requiredSignatures.id,
+            amount: parsed.nestedData.amount,
+            from: parsed.from,
+            encodedData: event.args.encodedData,
+            messageHash: parsed.messageHash,
+            to: parsed.to,
+            logIndex: event.log.logIndex,
+            originationChainId: parsed.originationChainId,
+            destinationChainId: parsed.destinationChainId,
+            orderId: targetOrderId,
+            confirmedSignatures: 0n,
+            finishedSigning: false,
+          },
+        }),
     ),
   ])
 }
@@ -678,10 +737,14 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     Promise.all([
-      getLatestRequiredSignatures(context, bridgeId),
+      getLatestRequiredSignatures(context, bridgeId, event),
       getOutstandingMessageIdByHash(context, event, false),
-    ]).then(([requiredSignatures, userRequestId]) =>
-      Promise.all([
+    ]).then(([requiredSignatures, userRequestId]) => {
+      if (!userRequestId) {
+        console.log('%o missing %o', messageHash, context.network.chainId)
+        return
+      }
+      return Promise.all([
         context.db.UserRequestForAffirmation.update({
           id: userRequestId,
           data: ({ current: row }) => {
@@ -711,8 +774,8 @@ ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
             deliveryId: userRequestId,
           },
         }),
-      ]),
-    ),
+      ])
+    }),
   ])
 })
 
@@ -727,10 +790,14 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
     upsertTransaction(context, event.transaction),
     upsertBridge(context, event.log.address),
     Promise.all([
-      getLatestRequiredSignatures(context, bridgeId),
+      getLatestRequiredSignatures(context, bridgeId, event),
       getOutstandingMessageIdByHash(context, event, true),
-    ]).then(([requiredSignatures, userRequestId]) =>
-      Promise.all([
+    ]).then(([requiredSignatures, userRequestId]) => {
+      if (!userRequestId) {
+        console.log('%o missing %o', messageHash, context.network.chainId)
+        return
+      }
+      return Promise.all([
         context.db.UserRequestForSignature.update({
           id: userRequestId,
           data: ({ current: row }) => {
@@ -760,8 +827,8 @@ ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
             deliveryId: userRequestId,
           },
         }),
-      ]),
-    ),
+      ])
+    }),
   ])
 })
 
@@ -773,8 +840,11 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
     upsertBlock(context, event.block),
     context.db.UserRequestForAffirmation.findUnique({
       id: event.args.messageId,
-    }).then((userRequestForAffirmation) =>
-      context.db.AffirmationComplete.create({
+    }).then((userRequestForAffirmation) => {
+      if (!userRequestForAffirmation) {
+        return
+      }
+      return context.db.AffirmationComplete.create({
         id: event.args.messageId,
         data: {
           transactionId,
@@ -785,8 +855,8 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
           orderId: orderId(context, event),
           userRequestId: userRequestForAffirmation!.id,
         },
-      }),
-    ),
+      })
+    }),
   ])
 })
 
@@ -798,8 +868,11 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
     upsertTransaction(context, event.transaction),
     context.db.UserRequestForSignature.findUnique({
       id: event.args.messageId,
-    }).then((userRequestForSignature) =>
-      context.db.RelayMessage.create({
+    }).then((userRequestForSignature) => {
+      if (!userRequestForSignature) {
+        return
+      }
+      return context.db.RelayMessage.create({
         id: event.args.messageId,
         data: {
           transactionId,
@@ -810,7 +883,7 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
           orderId: orderId(context, event),
           userRequestId: userRequestForSignature!.id,
         },
-      }),
-    ),
+      })
+    }),
   ])
 })
