@@ -55,19 +55,28 @@ export const Transaction = onchainTable(
   })
 );
 
-export const ValidatorStatus = onchainTable(
-  "ValidatorStatus",
+export const LatestValidatorStatusUpdate = onchainTable(
+  "LatestValidatorStatusUpdate",
+  (t) => ({
+    // validator id is the bridge id + validator address
+    // bridge id is the chain id (number) + bridge address
+    validatorId: t.hex().primaryKey().notNull(),
+    orderId: t.hex().notNull(),
+  })
+);
+
+export const ValidatorStatusUpdate = onchainTable(
+  "ValidatorStatusUpdate",
   (t) => ({
     validatorId: t.hex().notNull(),
-    orderId: t.hex().notNull(),
+    orderId: t.hex().primaryKey().notNull(),
     transactionId: t.hex().notNull(),
     address: t.hex().notNull(),
     bridgeId: t.hex().notNull(),
-    active: t.boolean().notNull(),
+    value: t.boolean().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({
-    pk: primaryKey({ columns: [t.validatorId, t.orderId] }),
     validatorId: index().on(t.validatorId),
     bridgeId: index().on(t.bridgeId),
     transactionId: index().on(t.transactionId),
@@ -235,12 +244,15 @@ export const SignedForAffirmation = onchainTable(
     messageHash: t.hex().notNull(),
     orderId: t.hex().notNull(),
     // should be unique to each bridge across all chains
-    id: t.hex().primaryKey(), // message hash + validator address
+    signatureId: t.hex().primaryKey(), // message hash + validator address
     validatorId: t.hex().notNull(),
+    userRequestId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({
     messageHashIndex: index().on(t.messageHash),
+    orderIdIndex: index().on(t.orderId),
+    validatorIdIndex: index().on(t.validatorId),
   })
 );
 
@@ -254,12 +266,15 @@ export const SignedForUserRequest = onchainTable(
     messageHash: t.hex().notNull(),
     orderId: t.hex().notNull(),
     // should be unique to each bridge across all chains
-    id: t.hex().primaryKey(), // message hash + validator address
+    signatureId: t.hex().primaryKey(), // message hash + validator address
     validatorId: t.hex().notNull(),
+    userRequestId: t.hex().notNull(),
     logIndex: t.smallint().notNull(),
   }),
   (t) => ({
     messageHashIndex: index().on(t.messageHash),
+    orderIdIndex: index().on(t.orderId),
+    validatorIdIndex: index().on(t.validatorId),
   })
 );
 
@@ -278,8 +293,8 @@ export const RelayMessage = onchainTable(
   })
 );
 
-export const AffirmationComplete = onchainTable(
-  "AffirmationComplete",
+export const AffirmationCompleted = onchainTable(
+  "AffirmationCompleted",
   (t) => ({
     messageHash: t.hex().primaryKey(),
     transactionId: t.hex().notNull(),
@@ -302,7 +317,7 @@ export const TransactionRelations = relations(Transaction, (t) => ({
   userRequestForAffirmation: t.many(UserRequestForAffirmation),
   signedForUserRequest: t.many(SignedForUserRequest),
   signedForAffirmation: t.many(SignedForAffirmation),
-  affirmationComplete: t.many(AffirmationComplete),
+  AffirmationCompleted: t.many(AffirmationCompleted),
   relayMessage: t.many(RelayMessage),
 }));
 
@@ -333,9 +348,9 @@ export const UserRequestForAffirmationRelations = relations(
     }),
     signatures: t.many(SignedForAffirmation),
     // should happen automatically at the final signature encouter
-    delivery: t.one(AffirmationComplete, {
+    delivery: t.one(AffirmationCompleted, {
       fields: [UserRequestForAffirmation.messageHash],
-      references: [AffirmationComplete.messageHash],
+      references: [AffirmationCompleted.messageHash],
     }),
     bridge: t.one(BridgeSide, {
       fields: [UserRequestForAffirmation.bridgeId],
@@ -408,9 +423,9 @@ export const SignedForAffirmationsRelations = relations(
       fields: [SignedForAffirmation.messageHash],
       references: [UserRequestForAffirmation.messageHash],
     }),
-    delivery: t.one(AffirmationComplete, {
+    delivery: t.one(AffirmationCompleted, {
       fields: [SignedForAffirmation.messageHash],
-      references: [AffirmationComplete.messageHash],
+      references: [AffirmationCompleted.messageHash],
     }),
   })
 );
@@ -427,28 +442,41 @@ export const RelayMessagesRelations = relations(RelayMessage, (t) => ({
   signature: t.many(SignedForUserRequest),
 }));
 
-export const AffirmationCompleteRelations = relations(
-  AffirmationComplete,
+export const AffirmationCompletedRelations = relations(
+  AffirmationCompleted,
   (t) => ({
     transaction: t.one(Transaction, {
-      fields: [AffirmationComplete.transactionId],
+      fields: [AffirmationCompleted.transactionId],
       references: [Transaction.transactionId],
     }),
     userRequest: t.one(UserRequestForAffirmation, {
-      fields: [AffirmationComplete.messageHash],
+      fields: [AffirmationCompleted.messageHash],
       references: [UserRequestForAffirmation.messageHash],
     }),
     signature: t.many(SignedForAffirmation),
   })
 );
 
-export const ValidatorStatusRelations = relations(ValidatorStatus, (t) => ({
-  bridge: t.one(BridgeSide, {
-    fields: [ValidatorStatus.bridgeId],
-    references: [BridgeSide.bridgeId],
-  }),
-  transaction: t.one(Transaction, {
-    fields: [ValidatorStatus.transactionId],
-    references: [Transaction.transactionId],
-  }),
-}));
+export const LatestValidatorStatusUpdateRelations = relations(
+  LatestValidatorStatusUpdate,
+  (t) => ({
+    validatorStatusUpdate: t.one(ValidatorStatusUpdate, {
+      fields: [LatestValidatorStatusUpdate.orderId],
+      references: [ValidatorStatusUpdate.orderId],
+    }),
+  })
+);
+
+export const ValidatorStatusUpdateRelations = relations(
+  ValidatorStatusUpdate,
+  (t) => ({
+    bridge: t.one(BridgeSide, {
+      fields: [ValidatorStatusUpdate.bridgeId],
+      references: [BridgeSide.bridgeId],
+    }),
+    transaction: t.one(Transaction, {
+      fields: [ValidatorStatusUpdate.transactionId],
+      references: [Transaction.transactionId],
+    }),
+  })
+);

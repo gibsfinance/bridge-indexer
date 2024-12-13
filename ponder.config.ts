@@ -1,7 +1,6 @@
 import { createConfig } from "ponder";
 import HomeAMBAbi from "./abis/HomeAMB";
 import ForeignAMBAbi from "./abis/ForeignAMB";
-import { TokenOmnibridgeAbi } from "./abis/TokenOmnibridge";
 import BaseBridgeValidatorsAbi from "./abis/BaseBridgeValidators";
 import {
   chains,
@@ -13,7 +12,7 @@ import {
 
 Error.stackTraceLimit = Infinity;
 
-export default createConfig({
+const config = createConfig({
   database: {
     kind: "postgres",
     connectionString: process.env.DATABASE_URL,
@@ -22,65 +21,35 @@ export default createConfig({
     ethereum: {
       chainId: chains.ethereum,
       transport: toTransport(chains.ethereum),
-      pollingInterval: 5_000,
+      pollingInterval: 15_000,
       maxRequestsPerSecond: 1_000,
     },
-    // bsc: {
-    //   chainId: chains.bsc,
-    //   transport: toTransport(chains.bsc),
-    //   pollingInterval: 5_000,
-    //   maxRequestsPerSecond: 1_000,
-    // },
+    bsc: {
+      chainId: chains.bsc,
+      transport: toTransport(chains.bsc),
+      pollingInterval: 15_000,
+      maxRequestsPerSecond: 1_000,
+    },
     pulsechain: {
       chainId: chains.pulsechain,
       transport: toTransport(chains.pulsechain),
-      pollingInterval: 5_000,
+      pollingInterval: 15_000,
       maxRequestsPerSecond: 1_000,
     },
     pulsechainV4: {
       chainId: chains.pulsechainV4,
       transport: toTransport(chains.pulsechainV4),
-      pollingInterval: 5_000,
+      pollingInterval: 15_000,
       maxRequestsPerSecond: 1_000,
     },
     sepolia: {
       chainId: chains.sepolia,
       transport: toTransport(chains.sepolia),
-      pollingInterval: 5_000,
+      pollingInterval: 15_000,
       maxRequestsPerSecond: 1_000,
     },
   },
   contracts: {
-    // TokenOmnibridge: {
-    //   abi: TokenOmnibridgeAbi,
-    //   network: {
-    //     ethereum: {
-    //       address: [
-    //         // add in all token bridges ever encountered
-    //       ],
-    //     },
-    //     pulsechain: {
-    //       address: [
-    //         //
-    //       ],
-    //     },
-    //     pulsechainV4: {
-    //       address: [
-    //         //
-    //       ],
-    //     },
-    //     sepolia: {
-    //       address: [
-    //         //
-    //       ],
-    //     },
-    //     // bsc: {
-    //     //   address: [
-    //     //     //
-    //     //   ],
-    //     // },
-    //   },
-    // },
     ValidatorContract: {
       abi: BaseBridgeValidatorsAbi,
       network: {
@@ -92,12 +61,12 @@ export default createConfig({
               chains.ethereum,
               "home"
             ),
-            // await getValidatorAddress(
-            //   Providers.TOKENSEX,
-            //   chains.pulsechain,
-            //   chains.bsc,
-            //   'home',
-            // ),
+            await getValidatorAddress(
+              Providers.TOKENSEX,
+              chains.pulsechain,
+              chains.bsc,
+              "home"
+            ),
           ],
           startBlock: 17_268_297,
         },
@@ -134,17 +103,17 @@ export default createConfig({
           ],
           startBlock: 3_331_893,
         },
-        // bsc: {
-        //   address: [
-        //     await getValidatorAddress(
-        //       Providers.TOKENSEX,
-        //       chains.pulsechain,
-        //       chains.bsc,
-        //       'foreign',
-        //     ),
-        //   ],
-        //   startBlock: 28_987_322,
-        // },
+        bsc: {
+          address: [
+            await getValidatorAddress(
+              Providers.TOKENSEX,
+              chains.pulsechain,
+              chains.bsc,
+              "foreign"
+            ),
+          ],
+          startBlock: 28_987_322,
+        },
       },
     },
     HomeAMB: {
@@ -161,7 +130,7 @@ export default createConfig({
         pulsechain: {
           address: [
             pathways.pulsechain[chains.pulsechain]![chains.ethereum]!.home,
-            // pathways.tokensex[chains.pulsechain]![chains.bsc]!.home,
+            pathways.tokensex[chains.pulsechain]![chains.bsc]!.home,
           ],
           // bsc is deployed at 17_494_240
           // startBlock: 20427991,
@@ -192,11 +161,11 @@ export default createConfig({
           // startBlock: 19920476,
           startBlock: 17_264_119,
         },
-        // bsc: {
-        //   address: [pathways.tokensex[chains.pulsechain]![chains.bsc]!.foreign],
-        //   // startBlock: 39182556,
-        //   startBlock: 28_987_322,
-        // },
+        bsc: {
+          address: [pathways.tokensex[chains.pulsechain]![chains.bsc]!.foreign],
+          // startBlock: 39182556,
+          startBlock: 28_987_322,
+        },
         sepolia: {
           address: [
             pathways.pulsechain[chains.pulsechainV4]![chains.sepolia]!.foreign,
@@ -208,3 +177,5 @@ export default createConfig({
     },
   },
 });
+console.log(config);
+export default config;
