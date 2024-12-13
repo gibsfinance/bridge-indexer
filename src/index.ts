@@ -61,12 +61,6 @@ const upsertTransaction = async (
   transaction: PonderCore.Transaction,
 ) => {
   const transactionId = ids.transaction(context, transaction.hash)
-  const memoryTransaction = inMemoryCache.get(`transaction-${transactionId}`)
-  if (memoryTransaction) {
-    if (memoryTransaction.transactionId === transactionId) {
-      return memoryTransaction
-    }
-  }
   return await context.db.Transaction.upsert({
     id: transactionId,
     create: {
