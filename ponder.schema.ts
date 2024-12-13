@@ -32,6 +32,11 @@ export default createSchema((t) => ({
       from: t.hex(),
       to: t.hex(),
       value: t.bigint(),
+      maxFeePerGas: t.bigint().optional(),
+      maxPriorityFeePerGas: t.bigint().optional(),
+      gas: t.bigint(),
+      gasPrice: t.bigint().optional(),
+      nonce: t.bigint(),
       userRequestForSignature: t.many('UserRequestForSignature.transactionId'),
       userRequestForAffirmation: t.many(
         'UserRequestForAffirmation.transactionId',
@@ -44,6 +49,13 @@ export default createSchema((t) => ({
     {
       blockId: t.index('blockId'),
       hash: t.index('hash'),
+      from: t.index('from'),
+      to: t.index('to'),
+      maxFeePerGas: t.index('maxFeePerGas'),
+      maxPriorityFeePerGas: t.index('maxPriorityFeePerGas'),
+      gasPrice: t.index('gasPrice'),
+      gas: t.index('gas'),
+      nonce: t.index('nonce'),
     },
   ),
   LatestValidatorStatusUpdate: t.createTable(
@@ -106,8 +118,8 @@ export default createSchema((t) => ({
   LatestRequiredSignaturesChanged: t.createTable(
     {
       id: t.hex(), // bridgeId - since it is universal for each side of each bridge pair
-      value: t.bigint(),
       orderId: t.hex().references('RequiredSignaturesChanged.id'),
+      order: t.one('orderId'),
     },
     {
       orderId: t.index('orderId'),

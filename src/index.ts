@@ -23,7 +23,7 @@ import {
 import _ from 'lodash'
 import * as PonderCore from '@ponder/core'
 import { Provider } from './utils'
-import { mainnet, pulsechain, pulsechainV4, sepolia } from 'viem/chains'
+import { bsc, mainnet, pulsechain, pulsechainV4, sepolia } from 'viem/chains'
 import ForeignAMB from '../abis/ForeignAMB'
 
 const upsertBlock = async (context: Context, block: PonderCore.Block) => {
@@ -76,6 +76,11 @@ const upsertTransaction = async (
       from: transaction.from,
       to: transaction.to!,
       value: transaction.value,
+      gas: transaction.gas,
+      nonce: BigInt(transaction.nonce),
+      maxFeePerGas: transaction.maxFeePerGas,
+      maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
+      gasPrice: transaction.gasPrice,
     },
     update: {},
   })
@@ -199,11 +204,9 @@ ponder.on(
         id: bridgeId,
         create: {
           orderId: eventOrderId,
-          value: event.args.requiredSignatures,
         },
         update: {
           orderId: eventOrderId,
-          value: event.args.requiredSignatures,
         },
       }),
       context.db.RequiredSignaturesChanged.create({
@@ -267,13 +270,18 @@ const getLatestRequiredSignatures = async (
       context.network.chainId,
     )
     const currentEventId = orderId(context, event)
-    const value = staticRequiredSignatures(context.network.chainId)
+    const value = staticRequiredSignatures(
+      context.network.chainId,
+      event.log.address,
+    )
     const [l] = await Promise.all([
-      context.db.LatestRequiredSignaturesChanged.create({
+      context.db.LatestRequiredSignaturesChanged.upsert({
         id: bridgeId,
-        data: {
+        create: {
           orderId: currentEventId,
-          value,
+        },
+        update: {
+          orderId: currentEventId,
         },
       }),
       context.db.RequiredSignaturesChanged.create({
@@ -377,6 +385,7 @@ const foreignPairing = new Map<Provider, Map<ChainId, Chain>>([
       [943, sepolia as Chain],
     ]),
   ],
+  [Providers.TOKENSEX, new Map([[369, bsc as Chain]])],
 ])
 
 const homePairing = new Map<Provider, Map<ChainId, Chain>>([
@@ -387,6 +396,7 @@ const homePairing = new Map<Provider, Map<ChainId, Chain>>([
       [943, pulsechainV4 as Chain],
     ]),
   ],
+  [Providers.TOKENSEX, new Map([[369, pulsechain as Chain]])],
 ])
 
 type URF<T> = {

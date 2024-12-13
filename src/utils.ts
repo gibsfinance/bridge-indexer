@@ -74,9 +74,30 @@ export const pathways = {
 
 export type Side = 'home' | 'foreign'
 
-export const staticRequiredSignatures = (chainId: ChainId) => {
+const getProviderInControlOf = (address: Hex) => {
+  for (const [homeChainId, value] of Object.entries(
+    pathways[Providers.PULSECHAIN],
+  )) {
+    for (const [foreignChainId, pathwayToForeignChain] of Object.entries(
+      value,
+    )) {
+      if (pathwayToForeignChain.home.toLowerCase() === address.toLowerCase()) {
+        return Providers.PULSECHAIN
+      }
+    }
+  }
+  return Providers.TOKENSEX
+}
+
+export const staticRequiredSignatures = (chainId: ChainId, address: Hex) => {
   if (chainId === chains.pulsechain) {
-    return 5n
+    const provider = getProviderInControlOf(address)
+    if (provider === Providers.PULSECHAIN) {
+      return 5n
+    }
+    if (provider === Providers.TOKENSEX) {
+      return 3n
+    }
   }
   if (chainId === chains.pulsechainV4) {
     return 3n
@@ -85,6 +106,9 @@ export const staticRequiredSignatures = (chainId: ChainId) => {
     return 5n
   }
   if (chainId === chains.sepolia) {
+    return 3n
+  }
+  if (chainId === chains.bsc) {
     return 3n
   }
   throw new Error('Unknown chain id')
