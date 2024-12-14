@@ -618,7 +618,6 @@ const handleURFA: URFAHandler = async ({ event, context }) => {
     `outstanding-message-id-${parsed.messageHash}`,
     event.args.messageId,
   )
-  // console.log(targetOrderId, parsed.messageHash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -672,7 +671,6 @@ const handleURFS: URFSHandler = async ({ event, context }) => {
     `outstanding-message-id-${parsed.messageHash}`,
     event.args.messageId,
   )
-  // console.log(targetOrderId, parsed.messageHash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.transaction),
@@ -848,18 +846,26 @@ ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
       if (!userRequestForAffirmation) {
         return
       }
-      return context.db.AffirmationComplete.create({
-        id: event.args.messageId,
-        data: {
-          transactionId,
-          blockId,
-          messageHash: userRequestForAffirmation!.messageHash,
-          deliverer: event.transaction.from,
-          logIndex: event.log.logIndex,
-          orderId: orderId(context, event),
-          userRequestId: userRequestForAffirmation!.id,
-        },
-      })
+      return Promise.all([
+        context.db.AffirmationCompleted.create({
+          id: event.args.messageId,
+          data: {
+            transactionId,
+            blockId,
+            messageHash: userRequestForAffirmation!.messageHash,
+            deliverer: event.transaction.from,
+            logIndex: event.log.logIndex,
+            orderId: orderId(context, event),
+            userRequestId: userRequestForAffirmation!.id,
+          },
+        }),
+        context.db.UserRequestForAffirmation.update({
+          id: userRequestForAffirmation.id,
+          data: {
+            deliveryId: event.args.messageId,
+          },
+        }),
+      ])
     }),
   ])
 })
@@ -876,18 +882,26 @@ ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
       if (!userRequestForSignature) {
         return
       }
-      return context.db.RelayMessage.create({
-        id: event.args.messageId,
-        data: {
-          transactionId,
-          blockId,
-          messageHash: userRequestForSignature!.messageHash,
-          deliverer: event.transaction.from,
-          logIndex: event.log.logIndex,
-          orderId: orderId(context, event),
-          userRequestId: userRequestForSignature!.id,
-        },
-      })
+      return Promise.all([
+        context.db.RelayMessage.create({
+          id: event.args.messageId,
+          data: {
+            transactionId,
+            blockId,
+            messageHash: userRequestForSignature!.messageHash,
+            deliverer: event.transaction.from,
+            logIndex: event.log.logIndex,
+            orderId: orderId(context, event),
+            userRequestId: userRequestForSignature!.id,
+          },
+        }),
+        context.db.UserRequestForSignature.update({
+          id: userRequestForSignature.id,
+          data: {
+            deliveryId: event.args.messageId,
+          },
+        }),
+      ])
     }),
   ])
 })

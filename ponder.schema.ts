@@ -14,7 +14,7 @@ export default createSchema((t) => ({
       userRequestForAffirmation: t.many('UserRequestForAffirmation.blockId'),
       signedForUserRequest: t.many('SignedForUserRequest.blockId'),
       signedForAffirmation: t.many('SignedForAffirmation.blockId'),
-      affirmationComplete: t.many('AffirmationComplete.blockId'),
+      affirmationCompleted: t.many('AffirmationCompleted.blockId'),
       relayMessage: t.many('RelayMessage.blockId'),
     },
     {
@@ -43,7 +43,7 @@ export default createSchema((t) => ({
       ),
       signedForUserRequest: t.many('SignedForUserRequest.transactionId'),
       signedForAffirmation: t.many('SignedForAffirmation.transactionId'),
-      affirmationComplete: t.many('AffirmationComplete.transactionId'),
+      affirmationCompleted: t.many('AffirmationCompleted.transactionId'),
       relayMessage: t.many('RelayMessage.transactionId'),
     },
     {
@@ -71,21 +71,19 @@ export default createSchema((t) => ({
       bridgeId: t.index('bridgeId'),
     },
   ),
-  ValidatorStatusUpdate: t.createTable(
-    {
-      id: t.hex(), // orderId
-      validatorId: t.hex(),
-      address: t.hex(),
-      active: t.boolean(),
-      logIndex: t.int(),
-      blockId: t.hex().references('Block.id'),
-      block: t.one('blockId'),
-      transactionId: t.hex().references('Transaction.id'),
-      transaction: t.one('transactionId'),
-      bridgeId: t.hex().references('BridgeSide.id'),
-      bridge: t.one('bridgeId'),
-    },
-  ),
+  ValidatorStatusUpdate: t.createTable({
+    id: t.hex(), // orderId
+    validatorId: t.hex(),
+    address: t.hex(),
+    active: t.boolean(),
+    logIndex: t.int(),
+    blockId: t.hex().references('Block.id'),
+    block: t.one('blockId'),
+    transactionId: t.hex().references('Transaction.id'),
+    transaction: t.one('transactionId'),
+    bridgeId: t.hex().references('BridgeSide.id'),
+    bridge: t.one('bridgeId'),
+  }),
   Direction: t.createEnum(['home', 'foreign']),
   Provider: t.createEnum(['pulsechain', 'tokensex']),
   BridgeSide: t.createTable(
@@ -129,7 +127,9 @@ export default createSchema((t) => ({
     {
       id: t.hex(),
       blockId: t.hex().references('Block.id'),
+      block: t.one('blockId'),
       transactionId: t.hex().references('Transaction.id'),
+      transaction: t.one('transactionId'),
       messageHash: t.hex(),
       from: t.hex(),
       to: t.hex(),
@@ -137,13 +137,17 @@ export default createSchema((t) => ({
       encodedData: t.hex(),
       logIndex: t.int(),
       bridgeId: t.hex().references('BridgeSide.id'),
+      bridge: t.one('bridgeId'),
       originationChainId: t.bigint(),
       destinationChainId: t.bigint(),
       requiredSignatureId: t.hex().references('RequiredSignaturesChanged.id'),
+      requiredSignature: t.one('requiredSignatureId'),
       confirmedSignatures: t.bigint(),
       finishedSigning: t.boolean(),
       signatures: t.many('SignedForAffirmation.userRequestId'),
       orderId: t.hex(),
+      deliveryId: t.hex().references('AffirmationCompleted.id').optional(),
+      delivery: t.one('deliveryId'),
     },
     {
       blockId: t.index('blockId'),
@@ -152,6 +156,7 @@ export default createSchema((t) => ({
       requiredSignatureId: t.index('requiredSignatureId'),
       finishedSigning: t.index('finishedSigning'),
       orderId: t.index('orderId'),
+      deliveryId: t.index('deliveryId'),
     },
   ),
   FeeDirector: t.createTable(
@@ -186,7 +191,7 @@ export default createSchema((t) => ({
       userRequest: t.one('userRequestId'),
       bridgeId: t.hex().references('BridgeSide.id'),
       bridge: t.one('bridgeId'),
-      deliveryId: t.hex().references('AffirmationComplete.id'),
+      deliveryId: t.hex().optional().references('AffirmationCompleted.id'),
       delivery: t.one('deliveryId'),
     },
     {
@@ -194,13 +199,13 @@ export default createSchema((t) => ({
       transactionId: t.index('transactionId'),
       messageHash: t.index('messageHash'),
       userRequestId: t.index('userRequestId'),
+      deliveryId: t.index('deliveryId'),
     },
   ),
   UserRequestForSignature: t.createTable(
     {
       id: t.hex(),
       blockId: t.hex().references('Block.id'),
-      block: t.one('blockId'),
       transactionId: t.hex().references('Transaction.id'),
       transaction: t.one('transactionId'),
       orderId: t.hex(),
@@ -221,6 +226,8 @@ export default createSchema((t) => ({
       signatures: t.many('SignedForUserRequest.userRequestId'),
       feeDirectorId: t.hex().references('FeeDirector.id').optional(),
       feeDirector: t.one('feeDirectorId'),
+      deliveryId: t.hex().references('RelayMessage.id').optional(),
+      delivery: t.one('deliveryId'),
     },
     {
       blockId: t.index('blockId'),
@@ -244,7 +251,7 @@ export default createSchema((t) => ({
       logIndex: t.int(),
       userRequestId: t.hex().references('UserRequestForSignature.id'),
       userRequest: t.one('userRequestId'),
-      deliveryId: t.hex().references('RelayMessage.id'),
+      deliveryId: t.hex().references('RelayMessage.id').optional(),
       delivery: t.one('deliveryId'),
       bridgeId: t.hex().references('BridgeSide.id'),
       bridge: t.one('bridgeId'),
@@ -288,7 +295,7 @@ export default createSchema((t) => ({
       transactionId: t.index('transactionId'),
     },
   ),
-  AffirmationComplete: t.createTable(
+  AffirmationCompleted: t.createTable(
     {
       id: t.hex(),
       blockId: t.hex().references('Block.id'),
