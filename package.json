@@ -6,7 +6,7 @@
     "docker:build": "docker compose -f docker-compose.yml build bridge-indexer-v08",
     "docker:up": "docker compose -f docker-compose.yml up -d bridge-indexer-v08",
     "dev": "ponder dev",
-    "start": "ponder start --schema bridge_indexer_v08",
+    "start": "ponder start --schema $DATABASE_SCHEMA",
     "db": "ponder db",
     "codegen": "ponder codegen",
     "serve": "ponder serve",
@@ -17,7 +17,7 @@
     "@types/lodash": "^4.17.13",
     "hono": "^4.5.0",
     "lodash": "^4.17.21",
-    "ponder": "^0.8.2",
+    "ponder": "^0.8.4",
     "viem": "^2.21.3"
   },
   "devDependencies": {

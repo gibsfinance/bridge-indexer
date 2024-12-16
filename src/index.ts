@@ -167,13 +167,13 @@ const getOutstandingMessageIdByHash = async (
   let binding = await context.db.find(ReverseMessageHashBinding, {
     messageHash,
   });
-  if (!binding) {
-    if (sameChain) {
-      binding = await loadFromChain(context, event, sameChain);
-    } else {
-      binding = await loadFromChain(context, event, sameChain);
-    }
-  }
+  // if (!binding) {
+  //   if (sameChain) {
+  //     binding = await loadFromChain(context, event, sameChain);
+  //   } else {
+  //     binding = await loadFromChain(context, event, sameChain);
+  //   }
+  // }
   cache.set(`outstanding-message-id-${messageHash}`, binding!.messageId);
   return binding!.messageId;
 };

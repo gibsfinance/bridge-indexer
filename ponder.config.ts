@@ -177,5 +177,5 @@ const config = createConfig({
     },
   },
 });
-console.log(config);
+console.log(config.contracts.ValidatorContract.network);
 export default config;
