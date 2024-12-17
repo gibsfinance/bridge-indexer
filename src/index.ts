@@ -1,5 +1,4 @@
-import { Context, ponder } from "ponder:registry";
-import * as PonderCore from "ponder";
+import { Context, ponder } from 'ponder:registry'
 import {
   AffirmationCompleted,
   FeeDirector,
@@ -13,52 +12,30 @@ import {
   UserRequestForSignature,
   ValidatorStatusUpdate,
   LatestValidatorStatusUpdate,
-} from "ponder:schema";
-import {
-  createPublicClient,
-  getContract,
-  keccak256,
-  Prettify,
-  PublicClient,
-  type Hex,
-} from "viem";
-import { parseAMBMessage } from "./message";
-import {
-  getBridgeAddressFromValidator,
-  ids,
-  orderId,
-  ChainId,
-  Providers,
-  toTransport,
-  pathways,
-} from "./utils";
-import _ from "lodash";
-import ForeignAMB from "../abis/ForeignAMB";
+} from 'ponder:schema'
+import type { Hex } from 'viem'
+import { parseAMBMessage } from './message'
+import { getBridgeAddressFromValidator, ids, orderId } from './utils'
 import {
   getLatestRequiredSignatures,
   upsertBridge,
   upsertBlock,
   upsertTransaction,
   cache,
-} from "./cache";
-import {
-  type SignatureEvent,
-  type URF,
-  homePairing,
-  foreignPairing,
-} from "./config";
+} from './cache'
+import type { SignatureEvent } from './config'
 
-ponder.on("ValidatorContract:ValidatorAdded", async ({ event, context }) => {
+ponder.on('ValidatorContract:ValidatorAdded', async ({ event, context }) => {
   console.log(
-    "validator %o on %o added",
+    'validator %o on %o added',
     event.args.validator,
-    context.network.chainId
-  );
-  const bridgeAddress = await getBridgeAddressFromValidator(event.log.address);
-  const bridgeId = ids.bridge(context, bridgeAddress);
-  const transactionId = ids.transaction(context, event.transaction.hash);
-  const validatorId = ids.validator(bridgeId, event.args.validator);
-  const eventOrderId = orderId(context, event);
+    context.network.chainId,
+  )
+  const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
+  const bridgeId = ids.bridge(context, bridgeAddress)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  const validatorId = ids.validator(bridgeId, event.args.validator)
+  const eventOrderId = orderId(context, event)
   await Promise.all([
     upsertBridge(context, bridgeAddress),
     upsertBlock(context, event.block),
@@ -81,20 +58,20 @@ ponder.on("ValidatorContract:ValidatorAdded", async ({ event, context }) => {
       transactionId,
       logIndex: event.log.logIndex,
     }),
-  ]);
-});
+  ])
+})
 
-ponder.on("ValidatorContract:ValidatorRemoved", async ({ event, context }) => {
+ponder.on('ValidatorContract:ValidatorRemoved', async ({ event, context }) => {
   console.log(
-    "validator %o on %o removed",
+    'validator %o on %o removed',
     event.args.validator,
-    context.network.chainId
-  );
-  const bridgeAddress = await getBridgeAddressFromValidator(event.log.address);
-  const bridgeId = ids.bridge(context, bridgeAddress);
-  const transactionId = ids.transaction(context, event.transaction.hash);
-  const validatorId = ids.validator(bridgeId, event.args.validator);
-  const eventOrderId = orderId(context, event);
+    context.network.chainId,
+  )
+  const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
+  const bridgeId = ids.bridge(context, bridgeAddress)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  const validatorId = ids.validator(bridgeId, event.args.validator)
+  const eventOrderId = orderId(context, event)
   await Promise.all([
     upsertBridge(context, bridgeAddress),
     upsertBlock(context, event.block),
@@ -117,19 +94,17 @@ ponder.on("ValidatorContract:ValidatorRemoved", async ({ event, context }) => {
       transactionId,
       logIndex: event.log.logIndex,
     }),
-  ]);
-});
+  ])
+})
 
 ponder.on(
-  "ValidatorContract:RequiredSignaturesChanged",
+  'ValidatorContract:RequiredSignaturesChanged',
   async ({ event, context }) => {
-    console.log("sig changed", event.args.requiredSignatures);
-    const bridgeAddress = await getBridgeAddressFromValidator(
-      event.log.address
-    );
-    const bridgeId = ids.bridge(context, bridgeAddress);
-    const transactionId = ids.transaction(context, event.transaction.hash);
-    const eventOrderId = orderId(context, event);
+    console.log('sig changed', event.args.requiredSignatures)
+    const bridgeAddress = await getBridgeAddressFromValidator(event.log.address)
+    const bridgeId = ids.bridge(context, bridgeAddress)
+    const transactionId = ids.transaction(context, event.transaction.hash)
+    const eventOrderId = orderId(context, event)
     await Promise.all([
       upsertBridge(context, bridgeAddress),
       upsertBlock(context, event.block),
@@ -150,41 +125,41 @@ ponder.on(
         transactionId,
         logIndex: event.log.logIndex,
       }),
-    ]);
-  }
-);
+    ])
+  },
+)
 
 const getOutstandingMessageIdByHash = async (
   context: Context,
-  event: SignatureEvent
+  event: SignatureEvent,
 ): Promise<Hex> => {
-  const messageHash = event.args.messageHash;
-  const cached = cache.get(`outstanding-message-id-${messageHash}`) as Hex;
+  const messageHash = event.args.messageHash
+  const cached = cache.get(`outstanding-message-id-${messageHash}`) as Hex
   if (cached) {
-    return cached;
+    return cached
   }
   const binding = await context.db.find(ReverseMessageHashBinding, {
     messageHash,
-  });
-  cache.set(`outstanding-message-id-${messageHash}`, binding!.messageId);
-  return binding!.messageId;
-};
+  })
+  cache.set(`outstanding-message-id-${messageHash}`, binding!.messageId)
+  return binding!.messageId
+}
 
 ponder.on(
-  "ForeignAMB:UserRequestForAffirmation",
+  'ForeignAMB:UserRequestForAffirmation',
   async ({ event, context }) => {
     const parsed = parseAMBMessage(
       event.transaction.from,
-      event.args.encodedData
-    );
-    const bridgeId = ids.bridge(context, event.log.address);
-    const blockId = ids.block(context, event.block.hash);
-    const transactionId = ids.transaction(context, event.transaction.hash);
-    const targetOrderId = orderId(context, event);
+      event.args.encodedData,
+    )
+    const bridgeId = ids.bridge(context, event.log.address)
+    const blockId = ids.block(context, event.block.hash)
+    const transactionId = ids.transaction(context, event.transaction.hash)
+    const targetOrderId = orderId(context, event)
     cache.set(
       `outstanding-message-id-${parsed.messageHash}`,
-      event.args.messageId
-    );
+      event.args.messageId,
+    )
     // console.log(targetOrderId, parsed.messageHash);
     await Promise.all([
       upsertBlock(context, event.block),
@@ -213,25 +188,25 @@ ponder.on(
             orderId: targetOrderId,
             confirmedSignatures: 0n,
             finishedSigning: false,
-          })
+            token: parsed.nestedData.token,
+            handlingNative: parsed.handlingNative,
+            deliveringNative: parsed.deliveringNative,
+          }),
       ),
-    ]);
-  }
-);
+    ])
+  },
+)
 
-ponder.on("HomeAMB:UserRequestForSignature", async ({ event, context }) => {
-  const bridgeId = ids.bridge(context, event.log.address);
-  const blockId = ids.block(context, event.block.hash);
-  const transactionId = ids.transaction(context, event.transaction.hash);
-  const parsed = parseAMBMessage(
-    event.transaction.from,
-    event.args.encodedData
-  );
-  const targetOrderId = orderId(context, event);
+ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
+  const bridgeId = ids.bridge(context, event.log.address)
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
+  const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
+  const targetOrderId = orderId(context, event)
   cache.set(
     `outstanding-message-id-${parsed.messageHash}`,
-    event.args.messageId
-  );
+    event.args.messageId,
+  )
   // console.log(targetOrderId, parsed.messageHash);
   await Promise.all([
     upsertBlock(context, event.block),
@@ -272,17 +247,20 @@ ponder.on("HomeAMB:UserRequestForSignature", async ({ event, context }) => {
           orderId: targetOrderId,
           confirmedSignatures: 0n,
           finishedSigning: false,
-        })
+          token: parsed.nestedData.token,
+          handlingNative: parsed.handlingNative,
+          deliveringNative: parsed.deliveringNative,
+        }),
     ),
-  ]);
-});
+  ])
+})
 
-ponder.on("HomeAMB:SignedForAffirmation", async ({ event, context }) => {
-  const messageHash = event.args.messageHash;
-  const bridgeId = ids.bridge(context, event.log.address);
-  const validatorId = ids.validator(bridgeId, event.args.signer);
-  const blockId = ids.block(context, event.block.hash);
-  const transactionId = ids.transaction(context, event.transaction.hash);
+ponder.on('HomeAMB:SignedForAffirmation', async ({ event, context }) => {
+  const messageHash = event.args.messageHash
+  const bridgeId = ids.bridge(context, event.log.address)
+  const validatorId = ids.validator(bridgeId, event.args.signer)
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.block, event.transaction),
@@ -311,17 +289,17 @@ ponder.on("HomeAMB:SignedForAffirmation", async ({ event, context }) => {
           logIndex: event.log.logIndex,
           orderId: orderId(context, event),
         }),
-      ])
+      ]),
     ),
-  ]);
-});
+  ])
+})
 
-ponder.on("HomeAMB:SignedForUserRequest", async ({ event, context }) => {
-  const messageHash = event.args.messageHash;
-  const bridgeId = ids.bridge(context, event.log.address);
-  const validatorId = ids.validator(bridgeId, event.args.signer);
-  const blockId = ids.block(context, event.block.hash);
-  const transactionId = ids.transaction(context, event.transaction.hash);
+ponder.on('HomeAMB:SignedForUserRequest', async ({ event, context }) => {
+  const messageHash = event.args.messageHash
+  const bridgeId = ids.bridge(context, event.log.address)
+  const validatorId = ids.validator(bridgeId, event.args.signer)
+  const blockId = ids.block(context, event.block.hash)
+  const transactionId = ids.transaction(context, event.transaction.hash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.block, event.transaction),
@@ -350,13 +328,13 @@ ponder.on("HomeAMB:SignedForUserRequest", async ({ event, context }) => {
           logIndex: event.log.logIndex,
           orderId: orderId(context, event),
         }),
-      ])
+      ]),
     ),
-  ]);
-});
+  ])
+})
 
-ponder.on("HomeAMB:AffirmationCompleted", async ({ event, context }) => {
-  const transactionId = ids.transaction(context, event.transaction.hash);
+ponder.on('HomeAMB:AffirmationCompleted', async ({ event, context }) => {
+  const transactionId = ids.transaction(context, event.transaction.hash)
   await Promise.all([
     upsertTransaction(context, event.block, event.transaction),
     upsertBlock(context, event.block),
@@ -372,13 +350,13 @@ ponder.on("HomeAMB:AffirmationCompleted", async ({ event, context }) => {
           deliverer: event.transaction.from,
           logIndex: event.log.logIndex,
           orderId: orderId(context, event),
-        });
+        })
       }),
-  ]);
-});
+  ])
+})
 
-ponder.on("ForeignAMB:RelayedMessage", async ({ event, context }) => {
-  const transactionId = ids.transaction(context, event.transaction.hash);
+ponder.on('ForeignAMB:RelayedMessage', async ({ event, context }) => {
+  const transactionId = ids.transaction(context, event.transaction.hash)
   await Promise.all([
     upsertBlock(context, event.block),
     upsertTransaction(context, event.block, event.transaction),
@@ -394,7 +372,7 @@ ponder.on("ForeignAMB:RelayedMessage", async ({ event, context }) => {
           deliverer: event.transaction.from,
           logIndex: event.log.logIndex,
           orderId: orderId(context, event),
-        });
+        })
       }),
-  ]);
-});
+  ])
+})

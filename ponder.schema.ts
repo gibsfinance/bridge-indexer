@@ -1,13 +1,7 @@
-import {
-  index,
-  onchainEnum,
-  onchainTable,
-  primaryKey,
-  relations,
-} from "ponder";
+import { index, onchainEnum, onchainTable, primaryKey, relations } from 'ponder'
 
 export const Block = onchainTable(
-  "Block",
+  'Block',
   (t) => ({
     blockId: t.hex().primaryKey(),
     chainId: t.numeric().notNull(),
@@ -20,11 +14,11 @@ export const Block = onchainTable(
     hash: index().on(t.hash),
     blockId: index().on(t.blockId),
     number: index().on(t.number),
-  })
-);
+  }),
+)
 
 export const Transaction = onchainTable(
-  "Transaction",
+  'Transaction',
   (t) => ({
     transactionId: t.hex().primaryKey(),
     blockId: t.hex().notNull(),
@@ -52,21 +46,21 @@ export const Transaction = onchainTable(
     maxFeePerGas: index().on(t.maxFeePerGas),
     maxPriorityFeePerGas: index().on(t.maxPriorityFeePerGas),
     gas: index().on(t.gas),
-  })
-);
+  }),
+)
 
 export const LatestValidatorStatusUpdate = onchainTable(
-  "LatestValidatorStatusUpdate",
+  'LatestValidatorStatusUpdate',
   (t) => ({
     // validator id is the bridge id + validator address
     // bridge id is the chain id (number) + bridge address
     validatorId: t.hex().primaryKey().notNull(),
     orderId: t.hex().notNull(),
-  })
-);
+  }),
+)
 
 export const ValidatorStatusUpdate = onchainTable(
-  "ValidatorStatusUpdate",
+  'ValidatorStatusUpdate',
   (t) => ({
     validatorId: t.hex().notNull(),
     orderId: t.hex().primaryKey().notNull(),
@@ -80,15 +74,15 @@ export const ValidatorStatusUpdate = onchainTable(
     validatorId: index().on(t.validatorId),
     bridgeId: index().on(t.bridgeId),
     transactionId: index().on(t.transactionId),
-  })
-);
+  }),
+)
 
-export const Direction = onchainEnum("Direction", ["home", "foreign"]);
+export const Direction = onchainEnum('Direction', ['home', 'foreign'])
 
-export const Provider = onchainEnum("Provider", ["pulsechain", "tokensex"]);
+export const Provider = onchainEnum('Provider', ['pulsechain', 'tokensex'])
 
 export const BridgeSide = onchainTable(
-  "BridgeSide",
+  'BridgeSide',
   (t) => ({
     bridgeId: t.hex().primaryKey(),
     chainId: t.numeric().notNull(),
@@ -99,11 +93,11 @@ export const BridgeSide = onchainTable(
   (t) => ({
     bridgeId: index().on(t.bridgeId),
     chainId: index().on(t.chainId),
-  })
-);
+  }),
+)
 
 export const RequiredSignaturesChanged = onchainTable(
-  "RequiredSignaturesChanged",
+  'RequiredSignaturesChanged',
   (t) => ({
     orderId: t.hex().primaryKey(),
     bridgeId: t.hex().notNull(),
@@ -115,16 +109,16 @@ export const RequiredSignaturesChanged = onchainTable(
     bridgeId: index().on(t.bridgeId),
     orderId: index().on(t.orderId),
     transactionId: index().on(t.transactionId),
-  })
-);
+  }),
+)
 
 export const LatestRequiredSignaturesChanged = onchainTable(
-  "LatestRequiredSignaturesChanged",
+  'LatestRequiredSignaturesChanged',
   (t) => ({
     bridgeId: t.hex().primaryKey(),
     orderId: t.hex().notNull(), // used as primary key for required_signatures_change table
-  })
-);
+  }),
+)
 
 export const LatestRequiredSignaturesChangedRelations = relations(
   LatestRequiredSignaturesChanged,
@@ -133,12 +127,12 @@ export const LatestRequiredSignaturesChangedRelations = relations(
       fields: [LatestRequiredSignaturesChanged.bridgeId],
       references: [BridgeSide.bridgeId],
     }),
-  })
-);
+  }),
+)
 
 // user initated going from foreign chain to home chain
 export const UserRequestForAffirmation = onchainTable(
-  "UserRequestForAffirmation",
+  'UserRequestForAffirmation',
   (t) => ({
     blockId: t.hex().notNull(),
     orderId: t.hex().notNull(),
@@ -157,6 +151,9 @@ export const UserRequestForAffirmation = onchainTable(
     requiredSignatureId: t.hex().notNull(),
     confirmedSignatures: t.bigint().notNull(),
     finishedSigning: t.boolean().notNull(),
+    token: t.hex().notNull(),
+    handlingNative: t.boolean().notNull(),
+    deliveringNative: t.boolean().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
@@ -164,10 +161,10 @@ export const UserRequestForAffirmation = onchainTable(
     bridgeIdIndex: index().on(t.bridgeId),
     finishedSigningIndex: index().on(t.finishedSigning),
     requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
-  })
-);
+  }),
+)
 export const FeeDirector = onchainTable(
-  "FeeDirector",
+  'FeeDirector',
   (t) => ({
     messageId: t.hex().primaryKey(),
     recipient: t.hex().notNull(),
@@ -180,12 +177,12 @@ export const FeeDirector = onchainTable(
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
-  })
-);
+  }),
+)
 
 // user initated going from home chain to foreign chain
 export const UserRequestForSignature = onchainTable(
-  "UserRequestForSignature",
+  'UserRequestForSignature',
   (t) => ({
     // references the block and transaction that the request was made in
     blockId: t.hex().notNull(),
@@ -205,6 +202,9 @@ export const UserRequestForSignature = onchainTable(
     requiredSignatureId: t.hex().notNull(),
     confirmedSignatures: t.bigint().notNull(),
     finishedSigning: t.boolean().notNull(),
+    token: t.hex().notNull(),
+    handlingNative: t.boolean().notNull(),
+    deliveringNative: t.boolean().notNull(),
   }),
   (t) => ({
     messageIdIndex: index().on(t.messageId),
@@ -212,11 +212,11 @@ export const UserRequestForSignature = onchainTable(
     bridgeIdIndex: index().on(t.bridgeId),
     finishedSigningIndex: index().on(t.finishedSigning),
     requiredSignaturesIdIndex: index().on(t.requiredSignatureId),
-  })
-);
+  }),
+)
 
 export const ReverseMessageHashBinding = onchainTable(
-  "ReverseMessageHashBinding",
+  'ReverseMessageHashBinding',
   (t) => ({
     messageHash: t.hex().notNull().primaryKey(),
     messageId: t.hex().notNull(),
@@ -224,19 +224,19 @@ export const ReverseMessageHashBinding = onchainTable(
   (t) => ({
     messageHashIndex: index().on(t.messageHash),
     messageIdIndex: index().on(t.messageId),
-  })
-);
+  }),
+)
 
 export const FeeDirectorRelations = relations(FeeDirector, (t) => ({
   userRequest: t.one(UserRequestForSignature, {
     fields: [FeeDirector.messageId],
     references: [UserRequestForSignature.messageId],
   }),
-}));
+}))
 
 // validator initiated going from foreign chain to home chain
 export const SignedForAffirmation = onchainTable(
-  "SignedForAffirmation",
+  'SignedForAffirmation',
   (t) => ({
     // references the block and transaction that the request was made in
     blockId: t.hex().notNull(),
@@ -253,12 +253,12 @@ export const SignedForAffirmation = onchainTable(
     messageHashIndex: index().on(t.messageHash),
     orderIdIndex: index().on(t.orderId),
     validatorIdIndex: index().on(t.validatorId),
-  })
-);
+  }),
+)
 
 // validator initiated going from home to foreign chain
 export const SignedForUserRequest = onchainTable(
-  "SignedForUserRequest",
+  'SignedForUserRequest',
   (t) => ({
     // references the block and transaction that the request was made in
     blockId: t.hex().notNull(),
@@ -275,11 +275,11 @@ export const SignedForUserRequest = onchainTable(
     messageHashIndex: index().on(t.messageHash),
     orderIdIndex: index().on(t.orderId),
     validatorIdIndex: index().on(t.validatorId),
-  })
-);
+  }),
+)
 
 export const RelayMessage = onchainTable(
-  "RelayMessage",
+  'RelayMessage',
   (t) => ({
     messageHash: t.hex().primaryKey(),
     transactionId: t.hex().notNull(),
@@ -290,11 +290,11 @@ export const RelayMessage = onchainTable(
   }),
   (t) => ({
     messageHashIndex: index().on(t.messageHash),
-  })
-);
+  }),
+)
 
 export const AffirmationCompleted = onchainTable(
-  "AffirmationCompleted",
+  'AffirmationCompleted',
   (t) => ({
     messageHash: t.hex().primaryKey(),
     transactionId: t.hex().notNull(),
@@ -305,8 +305,8 @@ export const AffirmationCompleted = onchainTable(
   }),
   (t) => ({
     messageHashIndex: index().on(t.messageHash),
-  })
-);
+  }),
+)
 
 export const TransactionRelations = relations(Transaction, (t) => ({
   block: t.one(Block, {
@@ -319,7 +319,7 @@ export const TransactionRelations = relations(Transaction, (t) => ({
   signedForAffirmation: t.many(SignedForAffirmation),
   AffirmationCompleted: t.many(AffirmationCompleted),
   relayMessage: t.many(RelayMessage),
-}));
+}))
 
 export const RequiredSignaturesChangedRelations = relations(
   RequiredSignaturesChanged,
@@ -332,8 +332,8 @@ export const RequiredSignaturesChangedRelations = relations(
       fields: [RequiredSignaturesChanged.bridgeId],
       references: [BridgeSide.bridgeId],
     }),
-  })
-);
+  }),
+)
 
 export const UserRequestForAffirmationRelations = relations(
   UserRequestForAffirmation,
@@ -360,8 +360,8 @@ export const UserRequestForAffirmationRelations = relations(
       fields: [UserRequestForAffirmation.requiredSignatureId],
       references: [RequiredSignaturesChanged.orderId],
     }),
-  })
-);
+  }),
+)
 
 export const UserRequestForSignatureRelations = relations(
   UserRequestForSignature,
@@ -391,8 +391,8 @@ export const UserRequestForSignatureRelations = relations(
       fields: [UserRequestForSignature.requiredSignatureId],
       references: [RequiredSignaturesChanged.orderId],
     }),
-  })
-);
+  }),
+)
 
 export const SignedForUserRequestsRelations = relations(
   SignedForUserRequest,
@@ -409,8 +409,8 @@ export const SignedForUserRequestsRelations = relations(
       fields: [SignedForUserRequest.messageHash],
       references: [RelayMessage.messageHash],
     }),
-  })
-);
+  }),
+)
 
 export const SignedForAffirmationsRelations = relations(
   SignedForAffirmation,
@@ -427,8 +427,8 @@ export const SignedForAffirmationsRelations = relations(
       fields: [SignedForAffirmation.messageHash],
       references: [AffirmationCompleted.messageHash],
     }),
-  })
-);
+  }),
+)
 
 export const RelayMessagesRelations = relations(RelayMessage, (t) => ({
   transaction: t.one(Transaction, {
@@ -440,7 +440,7 @@ export const RelayMessagesRelations = relations(RelayMessage, (t) => ({
     references: [UserRequestForSignature.messageHash],
   }),
   signature: t.many(SignedForUserRequest),
-}));
+}))
 
 export const AffirmationCompletedRelations = relations(
   AffirmationCompleted,
@@ -454,8 +454,8 @@ export const AffirmationCompletedRelations = relations(
       references: [UserRequestForAffirmation.messageHash],
     }),
     signature: t.many(SignedForAffirmation),
-  })
-);
+  }),
+)
 
 export const LatestValidatorStatusUpdateRelations = relations(
   LatestValidatorStatusUpdate,
@@ -464,8 +464,8 @@ export const LatestValidatorStatusUpdateRelations = relations(
       fields: [LatestValidatorStatusUpdate.orderId],
       references: [ValidatorStatusUpdate.orderId],
     }),
-  })
-);
+  }),
+)
 
 export const ValidatorStatusUpdateRelations = relations(
   ValidatorStatusUpdate,
@@ -478,5 +478,5 @@ export const ValidatorStatusUpdateRelations = relations(
       fields: [ValidatorStatusUpdate.transactionId],
       references: [Transaction.transactionId],
     }),
-  })
-);
+  }),
+)
