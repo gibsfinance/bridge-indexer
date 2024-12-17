@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "docker:build": "docker compose -f docker-compose.yml build bridge-indexer",
+    "docker:up": "docker compose -f docker-compose.yml up -d bridge-indexer",
     "dev": "ponder dev",
     "start": "ponder start",
     "codegen": "ponder codegen",
@@ -11,11 +13,11 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@ponder/core": "0.6",
     "@types/lodash": "^4.17.13",
     "hono": "^4.5.0",
     "lodash": "^4.17.21",
-    "viem": "^2.21.54"
+    "ponder": "^0.8.6",
+    "viem": "^2.21.55"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
