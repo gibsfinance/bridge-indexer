@@ -134,14 +134,14 @@ const getOutstandingMessageIdByHash = async (
   event: SignatureEvent,
 ): Promise<Hex> => {
   const messageHash = event.args.messageHash
-  const cached = cache.get(`outstanding-message-id-${messageHash}`) as Hex
-  if (cached) {
-    return cached
-  }
+  // const cached = cache.get(`outstanding-message-id-${messageHash}`) as Hex
+  // if (cached) {
+  //   return cached
+  // }
   const binding = await context.db.find(ReverseMessageHashBinding, {
     messageHash,
   })
-  cache.set(`outstanding-message-id-${messageHash}`, binding!.messageId)
+  // cache.set(`outstanding-message-id-${messageHash}`, binding!.messageId)
   return binding!.messageId
 }
 
@@ -156,10 +156,10 @@ ponder.on(
     const blockId = ids.block(context, event.block.hash)
     const transactionId = ids.transaction(context, event.transaction.hash)
     const targetOrderId = orderId(context, event)
-    cache.set(
-      `outstanding-message-id-${parsed.messageHash}`,
-      event.args.messageId,
-    )
+    // cache.set(
+    //   `outstanding-message-id-${parsed.messageHash}`,
+    //   event.args.messageId,
+    // )
     // console.log(targetOrderId, parsed.messageHash);
     await Promise.all([
       upsertBlock(context, event.block),
@@ -203,10 +203,10 @@ ponder.on('HomeAMB:UserRequestForSignature', async ({ event, context }) => {
   const transactionId = ids.transaction(context, event.transaction.hash)
   const parsed = parseAMBMessage(event.transaction.from, event.args.encodedData)
   const targetOrderId = orderId(context, event)
-  cache.set(
-    `outstanding-message-id-${parsed.messageHash}`,
-    event.args.messageId,
-  )
+  // cache.set(
+  //   `outstanding-message-id-${parsed.messageHash}`,
+  //   event.args.messageId,
+  // )
   // console.log(targetOrderId, parsed.messageHash);
   await Promise.all([
     upsertBlock(context, event.block),

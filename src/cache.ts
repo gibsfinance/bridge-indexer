@@ -95,27 +95,27 @@ export const upsertBridge = async (context: Context, address: Hex) => {
 }
 
 setInterval(() => {
-  const previousSize = cache.size
-  let deleted = 0
+  // const previousSize = cache.size
+  // let deleted = 0
   const keyCounts = new Map<string, number>()
   for (const k of cache.keys()) {
-    if (
-      deleted < 20_000 &&
-      cache.size > 20_000 &&
-      k.startsWith('outstanding-message-id-')
-    ) {
-      deleted++
-      cache.delete(k)
-    }
+    //   if (
+    //     deleted < 20_000 &&
+    //     cache.size > 20_000 &&
+    //     k.startsWith('outstanding-message-id-')
+    //   ) {
+    //     deleted++
+    //     cache.delete(k)
+    //   }
     const subK = k.split('-')[0]!
     keyCounts.set(subK, (keyCounts.get(subK) ?? 0) + 1)
   }
-  console.log(
-    'cache previous=%o size=%o keys=%o',
-    previousSize,
-    cache.size,
-    keyCounts,
-  )
+  // console.log(
+  //   'cache previous=%o size=%o keys=%o',
+  //   previousSize,
+  //   cache.size,
+  //   keyCounts,
+  // )
 }, 60_000)
 
 type RequiredSigs = {
