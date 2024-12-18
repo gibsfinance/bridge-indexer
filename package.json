@@ -16,7 +16,7 @@
     "@types/lodash": "^4.17.13",
     "hono": "^4.5.0",
     "lodash": "^4.17.21",
-    "ponder": "^0.8.6",
+    "ponder": "^0.8.7",
     "viem": "^2.21.55"
   },
   "devDependencies": {
