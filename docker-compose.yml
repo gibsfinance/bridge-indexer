@@ -3,7 +3,7 @@ services:
     container_name: postgres-bridge-indexer
     image: postgres:16
     shm_size: 16g
-    command: postgres -c 'max_connections=500' -c work_mem=2GB -c maintenance_work_mem=2GB -c max_wal_size=1GB
+    command: postgres -c 'max_connections=500' -c work_mem=8GB -c maintenance_work_mem=8GB -c max_wal_size=2GB
     ports:
       - 4123:5432
     volumes:
@@ -50,6 +50,7 @@ services:
       - PONDER_RPC_URL_56=${PONDER_RPC_URL_56}
       - PONDER_RPC_URL_11155111=${PONDER_RPC_URL_11155111}
       - DATABASE_SCHEMA=bridge_indexer
+      - PONDER_LOG_LEVEL=debug
 
 networks:
   bridge-indexer:

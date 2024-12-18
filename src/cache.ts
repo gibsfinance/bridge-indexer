@@ -11,10 +11,6 @@ export const upsertBlock = async (
   block: PonderCore.Block,
 ) => {
   const blockId = ids.block(context, block.hash)
-  const b = cache.get(`block-${context.network.chainId}`)
-  if (b && b.blockId === blockId) {
-    return b as typeof Block.$inferSelect
-  }
   const blockInfo = await context.db.find(Block, {
     blockId,
   })
@@ -31,23 +27,16 @@ export const upsertBlock = async (
   })
 }
 
-export const cache = new Map<string, any>()
-
 export const upsertTransaction = async (
   context: Context,
   block: PonderCore.Block,
   transaction: PonderCore.Transaction,
 ) => {
   const transactionId = ids.transaction(context, transaction.hash)
-  const tx = cache.get(`tx-${context.network.chainId}`)
-  if (tx && tx.transactionId === transactionId) {
-    return tx as typeof Transaction.$inferSelect
-  }
   const transactionInfo = await context.db.find(Transaction, {
     transactionId,
   })
   if (transactionInfo) {
-    cache.set(`tx-${context.network.chainId}`, transactionInfo)
     return transactionInfo
   }
   const t = await context.db.insert(Transaction).values({
@@ -65,21 +54,15 @@ export const upsertTransaction = async (
     nonce: BigInt(transaction.nonce),
     type: transaction.type,
   })
-  cache.set(`tx-${context.network.chainId}`, t)
   return t
 }
 
 export const upsertBridge = async (context: Context, address: Hex) => {
   const bridgeId = ids.bridge(context, address)
-  const b = cache.get(`bridge-${bridgeId}`)
-  if (b) {
-    return b as typeof BridgeSide.$inferSelect
-  }
   const bridgeSide = await context.db.find(BridgeSide, {
     bridgeId,
   })
   if (bridgeSide) {
-    cache.set(`bridge-${bridgeId}`, bridgeSide)
     return bridgeSide
   }
   const info = bridgeInfo(address)
@@ -90,33 +73,8 @@ export const upsertBridge = async (context: Context, address: Hex) => {
     provider: info!.provider,
     side: info!.side,
   })
-  cache.set(`bridge-${bridgeId}`, bridge)
   return bridge
 }
-
-setInterval(() => {
-  // const previousSize = cache.size
-  // let deleted = 0
-  const keyCounts = new Map<string, number>()
-  for (const k of cache.keys()) {
-    //   if (
-    //     deleted < 20_000 &&
-    //     cache.size > 20_000 &&
-    //     k.startsWith('outstanding-message-id-')
-    //   ) {
-    //     deleted++
-    //     cache.delete(k)
-    //   }
-    const subK = k.split('-')[0]!
-    keyCounts.set(subK, (keyCounts.get(subK) ?? 0) + 1)
-  }
-  // console.log(
-  //   'cache previous=%o size=%o keys=%o',
-  //   previousSize,
-  //   cache.size,
-  //   keyCounts,
-  // )
-}, 60_000)
 
 type RequiredSigs = {
   orderId: Hex
@@ -128,10 +86,6 @@ export const getLatestRequiredSignatures = async (
   bridgeId: Hex,
   event: any,
 ) => {
-  const req = cache.get(`latest-required-sigs-${bridgeId}`) as RequiredSigs
-  if (req) {
-    return req
-  }
   let latest = await context.db.find(LatestRequiredSignaturesChanged, {
     bridgeId,
   })
@@ -172,6 +126,5 @@ export const getLatestRequiredSignatures = async (
   if (!requiredSignatures) {
     throw new Error('impossible state')
   }
-  cache.set(`latest-required-sigs-${bridgeId}`, requiredSignatures)
   return requiredSignatures
 }
