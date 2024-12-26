@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "docker:build-db": "docker compose build postgres-bridge-indexer-v05",
+    "docker:build": "docker compose build bridge-indexer-v05",
+    "docker:run": "docker compose up -d bridge-indexer-v05",
     "dev": "ponder dev",
     "start": "ponder start",
     "codegen": "ponder codegen",
@@ -13,9 +16,11 @@
   "dependencies": {
     "@ponder/core": "^0.5.25",
     "hono": "^4.5.0",
+    "lodash": "^4.17.21",
     "viem": "^1.19.9"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.13",
     "@types/node": "^20.10.0",
     "eslint": "^8.54.0",
     "eslint-config-ponder": "^0.5.25",

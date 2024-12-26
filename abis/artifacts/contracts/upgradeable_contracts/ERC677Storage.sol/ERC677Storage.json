@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "ERC677Storage",
+  "sourceName": "contracts/upgradeable_contracts/ERC677Storage.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a7230582046c4a010cc6e2e2dd6167ef9a40ecfa7d5e1677e3b230e0e26efd3f050235ac30029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a7230582046c4a010cc6e2e2dd6167ef9a40ecfa7d5e1677e3b230e0e26efd3f050235ac30029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

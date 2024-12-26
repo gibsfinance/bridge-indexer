@@ -1,0 +1,25 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IKnowForwarderAddress",
+  "sourceName": "contracts/gsn/interfaces/IKnowForwarderAddress.sol",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getTrustedForwarder",
+      "outputs": [
+        {
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

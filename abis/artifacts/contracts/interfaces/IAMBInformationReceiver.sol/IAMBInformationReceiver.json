@@ -1,0 +1,33 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IAMBInformationReceiver",
+  "sourceName": "contracts/interfaces/IAMBInformationReceiver.sol",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "messageId",
+          "type": "bytes32"
+        },
+        {
+          "name": "status",
+          "type": "bool"
+        },
+        {
+          "name": "result",
+          "type": "bytes"
+        }
+      ],
+      "name": "onInformationReceived",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

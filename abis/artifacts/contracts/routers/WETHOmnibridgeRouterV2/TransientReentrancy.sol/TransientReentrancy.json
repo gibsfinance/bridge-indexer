@@ -1,0 +1,16 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "TransientReentrancy",
+  "sourceName": "contracts/routers/WETHOmnibridgeRouterV2/TransientReentrancy.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ReentrancyGuard",
+      "type": "error"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

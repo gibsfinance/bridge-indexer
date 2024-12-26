@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Upgradeable",
+  "sourceName": "contracts/upgradeable_contracts/Upgradeable.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a72305820726d56c8aab4a78eb7e6d3b1d3887767d51bb13205c1381f2f3506ebb262b25a0029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a72305820726d56c8aab4a78eb7e6d3b1d3887767d51bb13205c1381f2f3506ebb262b25a0029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

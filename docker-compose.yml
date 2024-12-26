@@ -1,0 +1,64 @@
+services:
+  postgres-bridge-indexer-v05:
+    container_name: postgres-bridge-indexer-v05
+    image: postgres:16
+    command: postgres -c 'max_connections=500' -c work_mem=8GB -c maintenance_work_mem=8GB -c max_wal_size=2GB
+    ports:
+      - 4159:5432
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    networks:
+      - bridge-indexer-v05
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+    environment:
+      - POSTGRES_DB=bridge-indexer-v05
+      - POSTGRES_USER=bridge-indexer-v05
+      - POSTGRES_PASSWORD=password
+
+  bridge-indexer-v05:
+    restart: always
+    container_name: bridge-indexer-v05
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - bridge-indexer-v05
+    command: pnpm run start
+    ports:
+      - 42059:42069
+    depends_on:
+      - postgres-bridge-indexer-v05
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+    volumes:
+      - ./abis:/app/abis
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./ponder.config.ts:/app/ponder.config.ts
+      - ./ponder.schema.ts:/app/ponder.schema.ts
+      - ./ponder-env.d.ts:/app/ponder-env.d.ts
+    environment:
+      - NODE_OPTIONS="--max-old-space-size=8192"
+      - DATABASE_URL=postgresql://bridge-indexer-v05:password@postgres-bridge-indexer-v05:5432/bridge-indexer-v05
+      - PONDER_RPC_URL_943=https://rpc.v4.testnet.pulsechain.com
+      - PONDER_RPC_URL_369=https://rpc.pulsechain.com
+      - PONDER_RPC_URL_1=${PONDER_RPC_URL_1}
+      - PONDER_RPC_URL_56=${PONDER_RPC_URL_56}
+      - PONDER_RPC_URL_11155111=${PONDER_RPC_URL_11155111}
+      - DATABASE_SCHEMA=bridge_indexer
+      - PONDER_LOG_LEVEL=debug
+
+networks:
+  bridge-indexer-v05:
+    driver: bridge
+
+volumes:
+  bridge-indexer-v05:
+    external: true

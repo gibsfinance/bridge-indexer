@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "OtherSideBridgeStorage",
+  "sourceName": "contracts/upgradeable_contracts/OtherSideBridgeStorage.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a72305820f6e22859ff56ed07a00070e4b37062e9afc83019468eaf7d682dbfa82cd7096f0029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a72305820f6e22859ff56ed07a00070e4b37062e9afc83019468eaf7d682dbfa82cd7096f0029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

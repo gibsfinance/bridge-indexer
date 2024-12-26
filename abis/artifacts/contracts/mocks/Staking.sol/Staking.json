@@ -1,0 +1,17 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Staking",
+  "sourceName": "contracts/mocks/Staking.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a723058205526dd95c3b6ba7b8a3903df0e4529c76c082e440f9e0e396e3bcc64acb6b4550029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a723058205526dd95c3b6ba7b8a3903df0e4529c76c082e440f9e0e396e3bcc64acb6b4550029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

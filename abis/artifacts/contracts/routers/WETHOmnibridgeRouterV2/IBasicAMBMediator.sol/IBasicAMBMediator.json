@@ -1,0 +1,24 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IBasicAMBMediator",
+  "sourceName": "contracts/routers/WETHOmnibridgeRouterV2/IBasicAMBMediator.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "bridgeContract",
+      "outputs": [
+        {
+          "internalType": "contract IAMB",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "FeeTypes",
+  "sourceName": "contracts/upgradeable_contracts/FeeTypes.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a72305820aef1522301c32a6c480e1b0cc2830ba8faae865ce87d392aa071560b99be48ee0029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a72305820aef1522301c32a6c480e1b0cc2830ba8faae865ce87d392aa071560b99be48ee0029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
